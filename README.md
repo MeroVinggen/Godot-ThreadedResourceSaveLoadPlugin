@@ -9,7 +9,7 @@
 
 ## About
 
-This plugin allows you to save/load resources in a background using threads, preventing main thread freezes and handling the process using signals.
+This plugin allows you to save/load resources in the background using threads, preventing main thread freezes and handling the process using signals.
 
 
 ## Features
