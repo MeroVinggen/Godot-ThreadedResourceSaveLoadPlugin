@@ -6,6 +6,10 @@
   Godot ThreadedResourceSaveLoad Plugin
 </h1>
 
+<p align="center">
+  <img src="./demo record.webp"  alt="Godot-ProjectileOnCurve2DPlugin Icon"/>
+</p>
+
 
 ## About
 
