@@ -9,7 +9,7 @@
 
 ## About
 
-This plugin allows you to save/load resources in the background using threads, preventing main thread freezes and handle the save/load operations using signals.
+This plugin allows you to save/load resources <b>fast</b> in the background using threads, preventing the main thread freezes and handle the save/load operations using signals.
 
 > This is not the final solution for save/load processing in your project, but a wrapper for the native ResourceSaver and ResourceLoader, allowing them to be used in parallel. You may use it directly or build your save/load managers(modules) around it to suit your needs.
 
