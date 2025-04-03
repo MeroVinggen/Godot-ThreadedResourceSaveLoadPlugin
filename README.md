@@ -249,3 +249,29 @@ var cll: Array[Resource] = [
 ```
 
 All you need to do in this case - use for either outer or inner loaders (or both) connection to the signal instead of `await`.
+
+3. By default both ThreadedResourceLoader and ThreadedResourceSaver uses `OS.get_processor_count() - 1` amount of threads if you don't pass `threadsAmount` param, leaving 1 thread free. This is done on purpose to protect your main thread from freezes, but if your project won't do any hard work while you process resource save/load(like just showing loading screen) - you may use all threads and make this operations a bit faster, like in code example below. But it's not recommended as default behavior and better do some tests to confirm it behave as needed.
+
+```
+# using all threads amount for resource load
+ThreadedResourceLoader.new(OS.get_processor_count())...
+```
+4. Avoid creation many instances for simultaneously usage, as each instance will create it own threads and you easily will spawn more threads that system actually has, causing the main thread freezes. <b>Unless you are processing the used threads amount at the same time</b> <i>or you just know what you are doing</i>.
+
+```
+# --- bad
+
+for resource in cll:
+  ThreadedResourceLoader.new().add[[<path>]].start()
+
+
+# --- good
+
+var loader: ThreadedResourceLoader = ThreadedResourceLoader.new()
+
+for resource in cll:
+  loader.add[[<path>]]
+
+loader.start()
+
+```
