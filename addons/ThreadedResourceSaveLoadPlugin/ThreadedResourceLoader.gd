@@ -44,7 +44,16 @@ func add(resources: Array[Array]) -> ThreadedResourceLoader:
 		push_error("loading has already started, current call ignored")
 		return self
 	
-	_loadQueue.append_array(resources)
+	for params in resources:
+		if params.size() == 0: 
+			push_error("empty params array will be ignored")
+			continue
+		elif typeof(params[0]) != TYPE_STRING or params[0].strip_edges() == "":
+			push_error("invalid param value: \"{0}\", it should be a non empty string, will be ignored".format([params[0]]))
+			continue
+		
+		_loadQueue.append(params)
+	
 	_totalResourcesAmount = _loadQueue.size()
 	_mutex.unlock()
 	

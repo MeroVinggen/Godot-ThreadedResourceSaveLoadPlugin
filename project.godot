@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Threaded resource save-load plugin"
 config/tags=PackedStringArray("my_plugin")
-config/features=PackedStringArray("4.2", "Mobile")
+config/features=PackedStringArray("4.4", "Mobile")
 config/icon="res://icon.svg"
 
 [rendering]
