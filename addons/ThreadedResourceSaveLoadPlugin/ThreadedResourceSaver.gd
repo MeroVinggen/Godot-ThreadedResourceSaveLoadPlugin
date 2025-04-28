@@ -59,21 +59,28 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 		else:
 			var resourcePathIsEmpty: bool = params[0].resource_path.strip_edges() == ""
 			
-			if resourcePathIsEmpty:
-				if params.size() == 1:
+			if params.size() == 1:
+				if resourcePathIsEmpty:
 					push_error("resource_path is empty and no save path param been provided, resource will be ignored")
 					continue
-			
-			if params.size() > 1:
+				else:
+					push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
+					params.append(params[0].resource_path)
+			# params amount > 1
+			else:
 				if typeof(params[1]) != TYPE_STRING:
 					push_error("invalid save path param value: \"{0}\", it should be a string, resource will be ignored".format([params[1]]))
 					continue
 				
 				var savePathParamIsEmpty: bool = params[1].strip_edges() == ""
 				
-				if resourcePathIsEmpty and savePathParamIsEmpty:
-					push_error("resource_path and save path param are both empty, resource will be ignored")
-					continue
+				if savePathParamIsEmpty:
+					if resourcePathIsEmpty:
+						push_error("resource_path and save path param are both empty, resource will be ignored")
+						continue
+					else:
+						push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
+						params[1] = params[0].resource_path	
 		
 		_saveQueue.append(params)
 	
@@ -123,15 +130,6 @@ func _saveThreadWorker() -> void:
 		
 		var saveParams: Array = _saveQueue.pop_back()
 		var isQueueEmpty: bool = _saveQueue.is_empty()
-		# use resource_path if save param is empty string
-		var savePath: String
-		
-		# don't move it to checks in add func, coz anyway need to get used savePath here
-		#	for the further usage
-		if saveParams.size() > 1 and saveParams[1].strip_edges() == "":
-			push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([saveParams[0].resource_path]))
-			savePath = saveParams[0].resource_path
-			saveParams[1] = savePath
 		
 		_mutex.unlock()
 		
@@ -140,11 +138,11 @@ func _saveThreadWorker() -> void:
 		_mutex.lock()
 		if error == OK:
 			_completedResourcesAmount += 1
-			_savedPaths.append(savePath)
+			_savedPaths.append(saveParams[1])
 			call_deferred("emit_signal", "saveProgress", _completedResourcesAmount, _totalResourcesAmount)
 		else:
 			_failedResourcesAmount += 1
-			call_deferred("emit_signal", "saveError", savePath, error)
+			call_deferred("emit_signal", "saveError", saveParams[1], error)
 		
 		var isSaveComplete: bool = _completedResourcesAmount + _failedResourcesAmount >= _totalResourcesAmount
 		
