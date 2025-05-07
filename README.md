@@ -279,3 +279,5 @@ for resource in cll:
 loader.start()
 
 ```
+
+5. Don't use "small deploy with network file system" for remote deploy, it will randomly cause resource loading errs. If you willing so or have to use it - to avoid the errs you will need to re-launch the project (maybe few time in a row).
