@@ -226,6 +226,15 @@ ThreadedResourceLoader.new(
 `threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks.
 
 
+### Global config
+
+You can silence all warnings as shown below:
+```
+ThreadedResourceSaver.ignoreWarnings = true
+ThreadedResourceLoader.ignoreWarnings = true
+```
+
+
 ### Caution
 
 1. Make instance per task to perform, do not re-use them, this may cause unpredictable behavior.

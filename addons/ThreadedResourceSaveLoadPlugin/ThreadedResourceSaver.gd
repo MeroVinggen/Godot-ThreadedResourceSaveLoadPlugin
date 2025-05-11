@@ -6,6 +6,8 @@ signal saveProgress(completedCount: int, totalResources: int)
 signal saveCompleted(savedPaths: Array[String])
 signal saveError(path: String, errorCode: Error)
 
+static var ignoreWarnings: bool = false
+
 var MAX_THREADS: int
 var _semaphore: Semaphore
 var _mutex: Mutex
@@ -64,7 +66,8 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 					push_error("resource_path is empty and no save path param been provided, resource will be ignored")
 					continue
 				else:
-					push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
+					if not ThreadedResourceSaver.ignoreWarnings:
+						push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
 					params.append(params[0].resource_path)
 			# params amount > 1
 			else:
@@ -79,7 +82,8 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 						push_error("resource_path and save path param are both empty, resource will be ignored")
 						continue
 					else:
-						push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
+						if not ThreadedResourceSaver.ignoreWarnings:
+							push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
 						params[1] = params[0].resource_path	
 		
 		_saveQueue.append(params)
@@ -102,7 +106,8 @@ func start() -> ThreadedResourceSaver:
 	call_deferred("emit_signal", "saveStarted", _totalResourcesAmount)
 	
 	if _totalResourcesAmount == 0:
-		push_warning("save queue is empty, immediate finish saving signal emission")
+		if not ThreadedResourceSaver.ignoreWarnings:
+			push_warning("save queue is empty, immediate finish saving signal emission")
 		call_deferred("emit_signal", "saveCompleted", _savedPaths)
 		_mutex.unlock()
 		return self

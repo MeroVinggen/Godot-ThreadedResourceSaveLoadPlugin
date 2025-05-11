@@ -6,6 +6,8 @@ signal loadProgress(completedCount: int, totalResources: int)
 signal loadCompleted(loadedFiles: Array[Resource])
 signal loadError(path: String)
 
+static var ignoreWarnings: bool = false
+
 var MAX_THREADS: int
 var _semaphore: Semaphore
 var _mutex: Mutex
@@ -72,7 +74,8 @@ func start() -> ThreadedResourceLoader:
 	call_deferred("emit_signal", "loadStarted", _totalResourcesAmount)
 	
 	if _totalResourcesAmount == 0:
-		push_warning("load queue is empty, immediate finish loading signal emission")
+		if not ThreadedResourceSaver.ignoreWarnings:
+			push_warning("load queue is empty, immediate finish loading signal emission")
 		call_deferred("emit_signal", "loadCompleted", _loadedFiles)
 		_mutex.unlock()
 		return self
