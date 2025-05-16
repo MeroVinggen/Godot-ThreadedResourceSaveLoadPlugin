@@ -7,7 +7,7 @@
 </h1>
 
 <p align="center">
-  <img src="./demo record.webp" height="350" alt="demo record"/>
+  <img src="./demo-record.gif" height="350" alt="demo record"/>
 </p>
 
 
