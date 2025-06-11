@@ -237,11 +237,11 @@ ThreadedResourceLoader.ignoreWarnings = true
 
 ### Caution
 
-1. Prefer explicit signal connections instead of await to avoid possible issues with godot
+1. Prefer explicit signal connections instead of `await` to avoid possible issues with godot
 
 2. Make instance per task to perform, do not re-use them, this may cause unpredictable behavior.
  
-3. If you will use ThreadedResourceLoader with await to load file that makes the same inside - inner await will never resolve:
+3. If you will use ThreadedResourceLoader with `await` to load file that makes the same inside - inner `await` will never resolve:
 
 ```
 # ---- file: main.gd
