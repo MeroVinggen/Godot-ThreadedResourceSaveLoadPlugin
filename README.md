@@ -6,6 +6,12 @@
   Godot ThreadedResourceSaveLoad Plugin
 </h1>
 
+<h2 align="center">
+  <a href="#file-saving"> File saving </a>
+  |
+  <a href="#file-loading"> File loading </a>
+</h2>
+
 <p align="center">
   <img src="./demo-record.gif" height="350" alt="demo record"/>
 </p>
