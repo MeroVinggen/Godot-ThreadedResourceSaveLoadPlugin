@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://ko-fi.com/I2I31KH5HB" target="_blank">
-    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi"/>
+	<img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi"/>
   </a>
 </p>
 
@@ -40,7 +40,7 @@ This plugin allows you to save/load resources <b>fast</b> in the background usin
 
 ## Requirements 
 
-- Godot 4.0 or higher
+- Godot 4.1 or higher
 
 
 ## Installation
@@ -61,44 +61,38 @@ This plugin allows you to save/load resources <b>fast</b> in the background usin
 
 ### How to use
 
-1. create an instance
-
-```gdscript
-var saver: ThreadedResourceSaver = ThreadedResourceSaver.new()
-```
-
-2. add data to be saved via `add` method, each file params is passing as array in format: [Resource, String]
+1. add data to be saved via `add` method on plugin's singleton, each file params is passing as array in format: [Resource, String]
 
 > [!TIP]
 > See full params list at [Item params](#Item-params)
 
 ```gdscript
-saver.add([
+ThreadedSaver.add([
   [<your resource>, <your path to save>],
   [<your resource>, <your path to save>],
   ...
 ])
 ```
 
-3. listen to needed signals
+2. listen to needed signals
 
 ```gdscript
-saver.saveCompleted.connect(_onSaveCompleted, CONNECT_ONE_SHOT)
+ThreadedSaver.saveCompleted.connect(_on_save_completed, CONNECT_ONE_SHOT)
 ```
 
-4. start saving by calling `start` method
-    	
+3. start saving by calling `start` method
+		
 ```gdscript
-saver.start()
+ThreadedSaver.start()
 ```
 
-Also you may use saving inline without saving ThreadedResourceSaver instance to a variable:
+Also you may use inline saving and chain methods call:
 
 > [!WARNING]
-> This approach is undesirable, see [Caution](#Caution) section
+> Usage with `await` is undesirable, see [Caution](#Caution) section
 
 ```gdscript
-await ThreadedResourceSaver.new().add([
+await ThreadedSaver.add([
   [<your resource>, <your path to save>],
   [<your resource>, <your path to save>],
   ...
@@ -106,11 +100,11 @@ await ThreadedResourceSaver.new().add([
 
 # or
 
-ThreadedResourceSaver.new().add([
+ThreadedSaver.add([
   [<your resource>, <your path to save>],
   [<your resource>, <your path to save>],
   ...
-]).start().saveCompleted.connect(_onSaveCompleted, CONNECT_ONE_SHOT)
+]).start().saveCompleted.connect(_on_save_completed, CONNECT_ONE_SHOT)
 
 ```
 
@@ -122,7 +116,7 @@ The full params list per file is same as for godot's `ResourceSaver`:
 ```gdscript
 [
   resource: Resource, 
-  path: String = "", 
+  path: String = resource.resource_path,
   flags: BitField[SaverFlags] = 0
 ]
 ```
@@ -142,14 +136,17 @@ signal saveCompleted(savedPaths: Array[String])
 
 # is emitted per saving err
 signal saveError(path: String, errorCode: Error)
+
+# is emitted when ready for the next saving call (goes after `saveCompleted` signal)
+signal saveReady()
 ```
 
 
-### Constructor params
+### `start` method params
 
 
 ```gdscript
-ThreadedResourceSaver.new(
+ThreadedSaver.start(
   verifyFilesAccess: bool = false, 
   threadsAmount: int = OS.get_processor_count() - 1
 )
@@ -157,60 +154,59 @@ ThreadedResourceSaver.new(
 
 `verifyFilesAccess` - ensures to emit `saveCompleted` signal after saved files become accessible, useful when you need to change them right after saving but takes more time to process (depending on users system).
 
-`threadsAmount` - how many threads will be used to process saving. You may pass your amount to save resources for additional parallel tasks.
+`threadsAmount` - how many threads will be used to process saving. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
 
 ## File loading
 
-### How to use
+### How to use`
 
-1. create an instance
+1. add paths to be loaded and keys for them via `add` method on plugin's singleton, each file params is passing as array in format: Array[String, String]
    
-```gdscript
-var loader: ThreadedResourceLoader = ThreadedResourceLoader.new()
-```
-
-1. add paths to be loaded via `add` method, each file params is passing as array in format: Array[String]
-   
-> [!TIP]
-> See full params list at [Item params](#Item-params-1)
+> [!TIP]  
+> - `STRING_NAME` type is also supported
+> -  the key is string name to access the loaded resource (if you path empty string - the resource path will be used as key)
+> - See full params list at [Item params](#Item-params-1)
 
 ```gdscript
-loader.add([
-  [<your path to load>],
-  [<your path to load>],
+ThreadedLoader.add([
+  [<your key for resource>, <your path to load>],
+  [<your key for resource>, <your path to load>],
   ...
 ])
 ```
 
-2. listen to needed signals
+1. listen to needed signals
    
 ```gdscript
-loader.loadCompleted.connect(_onLoadCompleted, CONNECT_ONE_SHOT)
+ThreadedLoader.loadCompleted.connect(_on_load_completed, CONNECT_ONE_SHOT)
 ```
 
 3. start loading by calling `start` method 	
    
 ```gdscript
-loader.start()
+ThreadedLoader.start()
 ```
 
-Also you may use loading inline without saving ThreadedResourceLoader instance to a variable:
+Also you may use inline loading and chain methods call:
+
+> [!WARNING]
+> Usage with `await` is undesirable, see [Caution](#Caution) section
 
 ```gdscript
-await ThreadedResourceLoader.new().add([
-  [<your path to load>],
-  [<your path to load>],
+await ThreadedLoader.add([
+  [<your key for resource>, <your path to load>],
+  [<your key for resource>, <your path to load>],
   ...
 ]).start().loadCompleted
 
 # or
 
-ThreadedResourceLoader.new().add([
-  [<your path to load>],
-  [<your path to load>],
+ThreadedLoader.add([
+  [<your key for resource>, <your path to load>],
+  [<your key for resource>, <your path to load>],
   ...
-]).start().loadCompleted.connect(_onLoadCompleted, CONNECT_ONE_SHOT)
+]).start().loadCompleted.connect(_on_load_completed, CONNECT_ONE_SHOT)
 
 ```
 
@@ -221,7 +217,8 @@ The full params list per file is same as for godot's `ResourceLoader`:
 
 ```gdscript
 [
-  path: String, 
+  key: String | StringName,
+  path: String | StringName, 
   type_hint: String = "", 
   cache_mode: CacheMode = 1
 ]
@@ -235,51 +232,93 @@ The full params list per file is same as for godot's `ResourceLoader`:
 signal loadStarted(totalResources: int)
 
 # is emitted per loaded file
-signal loadProgress(completedCount: int, totalResources: int)
+signal loadProgress(completedCount: int, totalResources: int, resource: Resource, resource_key: String)
 
 # is emitted when all files been loaded
-signal loadCompleted(loadedFiles: Array[Resource])
+signal loadCompleted(loadedFiles: Dictionary)
 
 # is emitted per loading err
 signal loadError(path: String)
+
+# is emitted when ready for the next loading call (goes after `loadCompleted` signal)
+signal loadReady()
 ```
 
 
-### Constructor params
-
+### `start` method params
 
 ```gdscript
-ThreadedResourceLoader.new(
+ThreadedLoader.start(
   threadsAmount: int = OS.get_processor_count() - 1
 )
 ```
-`threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks.
+`threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount)..
 
+
+### Accessing loaded resources
+
+`ThreadedLoader` provides you with `resource` itself and its `key` and `Dictionary[key: resource]` in `loadCompleted`
+
+```gdscript
+func start_load() -> void:
+  ThreadedLoader.loadCompleted.connect(_on_load_completed, CONNECT_ONE_SHOT)
+  ThreadedLoader.add([
+    ["img", [res://1.jpg],
+    ["scene", [res://2.tscn],
+  ])
+
+func _on_load_completed(loadedFiles: Dictionary) -> void:
+  loadedFiles.img   # accessing loaded "res://1.jpg"
+  loadedFiles.scene # accessing loaded "res://2.tscn"
+```
+
+or you may iterate the `loadedFiles` dictionary in loop. 
 
 ### Global config
 
 You can globally silence all warnings as shown below:
 
 ```gdscript
-ThreadedResourceSaver.ignoreWarnings = true
-ThreadedResourceLoader.ignoreWarnings = true
+ThreadedSaver.ignoreWarnings = true
+ThreadedLoader.ignoreWarnings = true
 ```
 
 
 ### Caution
 
-1. Prefer explicit signal connections instead of `await` to avoid possible issues with godot
+1. To gain more performance batch save / load calls with `add` method instead of saving / loading each file separately (less `start` calls == performance)
 
-2. Make instance per task to perform, do not re-use them, this may cause unpredictable behavior.
+```gdscript
+# ---- bad
+
+ThreadedLoader.add([["shuriken", "res://shuriken.jpg"]]).start()
+...
+await ThreadedLoader.loadReady
+ThreadedLoader.add([["board", "res://board.jpg"]]).start()
+...
+
+# ---- good
+
+ThreadedLoader.add([
+  ["shuriken", "res://shuriken.jpg"],
+  ["board", "res://board.jpg"],
+]).start()
+...
+
+```
+
+2. Prefer explicit signal connections instead of `await` to avoid possible issues with godot (more info in #4)
+
+3. After each finished saving / loading session (the `saveCompleted` / `loadCompleted` signals) singletons won't be available for next `start` call until they emit the `saveReady` / `loadReady` signal
  
-3. If you will use ThreadedResourceLoader with `await` to load file that makes the same inside - inner `await` will never resolve:
+4. If you will use ThreadedLoader with `await` to load file that makes the same inside - the inner `await` will never resolve:
 
 ```gdscript
 # ---- file: main.gd
 
 
 func _loadSubResource() -> void:
-  await ThreadedResourceLoader.new().add[["cll.gd"]].start().loadCompleted
+  await ThreadedLoader.add[["cll", "cll.gd"]].start().loadCompleted
 
 
 # ---- file: cll.gd
@@ -287,39 +326,28 @@ func _loadSubResource() -> void:
 
 var cll: Array[Resource] = [
   # never resolve!
-  await ThreadedResourceLoader.new().add[["texture1.png"]].start().loadCompleted,
-  await ThreadedResourceLoader.new().add[["texture2.png"]].start().loadCompleted,
+  await ThreadedLoader.add[["t1", "texture1.png"]].start().loadCompleted,
+  await ThreadedLoader.add[["t2", "texture2.png"]].start().loadCompleted,
   ...
 ]
 
 ```
 
-All you need to do in this case - use for either outer or inner loaders (or both) connection to the signal instead of `await`.
+All you need to do in this case - use for either outer or inner loaders (or both) explicit connection to the signal instead of `await`.
 
-4. By default both ThreadedResourceLoader and ThreadedResourceSaver uses `OS.get_processor_count() - 1` amount of threads if you don't pass `threadsAmount` param, leaving 1 thread free. This is done on purpose to protect your main thread from freezes, but if your project won't do any hard work while you process resource save/load(like just showing loading screen) - you may use all threads and make this operations a bit faster, like in code example below. But it's not recommended as default behavior and better do some tests to confirm it behave as needed.
-
-```gdscript
-# using all threads amount for resource load
-ThreadedResourceLoader.new(OS.get_processor_count())...
-```
-5. Avoid creation many instances for simultaneously usage, as each instance will create it own threads and you easily will spawn more threads that system actually has, causing the main thread freezes. <b>Unless you are processing the used threads amount at the same time</b> <i>or you just know what you are doing</i>.
+5. By default both `ThreadedLoader` and `ThreadedSaver` uses `OS.get_processor_count() - 1` amount of threads if you don't pass `threadsAmount` param, leaving 1 thread free. This is done on purpose to protect your main thread from freezes, but if your project won't do any hard work while you process resource save / load (like just showing the loading screen) - you may use all the threads and make this operations a bit faster, like in code example below. But it's not recommended as default behavior and better do some tests to confirm it behave as needed.
 
 ```gdscript
-# --- bad
-
-for resource in cll:
-  ThreadedResourceLoader.new().add[[<path>]].start()
-
-
-# --- good
-
-var loader: ThreadedResourceLoader = ThreadedResourceLoader.new()
-
-for resource in cll:
-  loader.add[[<path>]]
-
-loader.start()
-
+# using all the threads amount for resource load
+ThreadedLoader.start(OS.get_processor_count())
 ```
 
 6. Don't use "small deploy with network file system" for remote deploy, it will randomly cause resource loading errs. If you willing so or have to use it - to avoid the errs you will need to re-launch the project (maybe few time in a row).
+
+
+## See my other plugins
+
+- [ProjectileOnCurve2D ](https://github.com/MeroVinggen/Godot-ProjectileOnCurve2DPlugin)
+- [	
+Vector2 editor ](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
+- [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)

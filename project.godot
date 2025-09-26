@@ -12,9 +12,19 @@ config_version=5
 
 config/name="Threaded resource save-load plugin"
 config/tags=PackedStringArray("my_plugin")
-config/features=PackedStringArray("4.4", "Mobile")
+config/features=PackedStringArray("4.5", "Mobile")
 config/icon="res://icon.svg"
+
+[autoload]
+
+ThreadedLoader="*res://addons/ThreadedResourceSaveLoadPlugin/ThreadedResourceLoader.gd"
+ThreadedSaver="*res://addons/ThreadedResourceSaveLoadPlugin/ThreadedResourceSaver.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/ThreadedResourceSaveLoadPlugin/plugin.cfg")
 
 [rendering]
 
 renderer/rendering_method="mobile"
+

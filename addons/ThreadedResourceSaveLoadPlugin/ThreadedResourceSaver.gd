@@ -1,14 +1,14 @@
-extends RefCounted
+extends Node
 class_name ThreadedResourceSaver
 
 signal saveStarted(totalResources: int)
 signal saveProgress(completedCount: int, totalResources: int)
 signal saveCompleted(savedPaths: Array[String])
 signal saveError(path: String, errorCode: Error)
+signal saveReady()
 
 static var ignoreWarnings: bool = false
 
-var MAX_THREADS: int
 var _semaphore: Semaphore
 var _mutex: Mutex
 var _saveThreads: Array[Thread] = []
@@ -17,32 +17,18 @@ var _totalResourcesAmount: int = 0
 var _completedResourcesAmount: int = 0
 var _failedResourcesAmount: int = 0
 var _savedPaths: Array[String] = []
-var _verifyFilesAccess : bool = true
+var _verifyFilesAccess: bool = true
 var _isStopping: bool = false
 var _savingHasStarted: bool = false
-var _selfRefToKeepAlive: ThreadedResourceSaver
+var _currentThreadsAmount: int = 0
 
 
-func _init(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processor_count() - 1) -> void:
-	_selfRefToKeepAlive = self
+func _init() -> void:
 	_semaphore = Semaphore.new()
 	_mutex = Mutex.new()
-	_verifyFilesAccess  = verifyFilesAccess
-	MAX_THREADS = threadsAmount
-	
-	_initThreadPool()
 
 
-func _initThreadPool() -> void:
-	var thread: Thread
-	for i in range(MAX_THREADS):
-		thread = Thread.new()
-		_saveThreads.append(thread)
-		thread.start(_saveThreadWorker)
-
-
-# typing
-# resources: Array[{ resource: Resource, path: String }]
+# typing resources -> Array[{ resource: Resource, path: String }]
 func add(resources: Array[Array]) -> ThreadedResourceSaver:
 	_mutex.lock()
 	if _savingHasStarted:
@@ -71,8 +57,8 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 					params.append(params[0].resource_path)
 			# params amount > 1
 			else:
-				if typeof(params[1]) != TYPE_STRING:
-					push_error("invalid save path param value: \"{0}\", it should be a string, resource will be ignored".format([params[1]]))
+				if typeof(params[1]) != TYPE_STRING and typeof(params[1]) != TYPE_STRING_NAME:
+					push_error("invalid save path param value: \"{0}\", it should be a type of String or StringName, resource will be ignored".format([params[1]]))
 					continue
 				
 				var savePathParamIsEmpty: bool = params[1].strip_edges() == ""
@@ -94,30 +80,45 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 	return self
 
 
-func start() -> ThreadedResourceSaver:
+func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourceSaver:
 	_mutex.lock()
 	if _savingHasStarted:
 		_mutex.unlock()
 		push_error("saving has already started, current call ignored")
 		return self
 	
-	_savingHasStarted = true
-	
-	call_deferred("emit_signal", "saveStarted", _totalResourcesAmount)
-	
 	if _totalResourcesAmount == 0:
 		if not ThreadedResourceSaver.ignoreWarnings:
 			push_warning("save queue is empty, immediate finish saving signal emission")
 		call_deferred("emit_signal", "saveCompleted", _savedPaths)
 		_mutex.unlock()
+		_clearDataAfterSave.call_deferred()
 		return self
 	
-	for _i in range(min(MAX_THREADS, _totalResourcesAmount)):
+	_savingHasStarted = true
+	_verifyFilesAccess = verifyFilesAccess
+	
+	# Create thread pool for this saving session
+	_initThreadPool(threadsAmount)
+	
+	call_deferred("emit_signal", "saveStarted", _totalResourcesAmount)
+	
+	for _i in range(_currentThreadsAmount):
 		_semaphore.post.call_deferred()
 	
 	_mutex.unlock()
 	
 	return self
+
+
+func _initThreadPool(threadsAmount: int) -> void:
+	var actualThreadsNeeded = min(threadsAmount, _totalResourcesAmount)
+	var thread: Thread
+	for i in range(actualThreadsNeeded):
+		thread = Thread.new()
+		_saveThreads.append(thread)
+		thread.start(_saveThreadWorker)
+	_currentThreadsAmount = actualThreadsNeeded
 
 
 func _saveThreadWorker() -> void:
@@ -169,7 +170,6 @@ func _verifyFileReadinessAccess() -> void:
 	if not _verifyFilesAccess:
 		call_deferred("emit_signal", "saveCompleted", savedPathsCopy)
 		_stopSaveThreads.call_deferred()
-		_clearSelfRef.call_deferred()
 		return
 	
 	var file: FileAccess
@@ -180,14 +180,13 @@ func _verifyFileReadinessAccess() -> void:
 		else:
 			call_deferred("emit_signal", "saveError", path, ERR_FILE_CANT_READ)
 			_stopSaveThreads.call_deferred()
-			_clearSelfRef.call_deferred()
 			return
 	
 	call_deferred("emit_signal", "saveCompleted", savedPathsCopy)
 	_stopSaveThreads.call_deferred()
-	_clearSelfRef.call_deferred()
 
 
+# handle also the cleanup (_clearDataAfterSave call at the end)
 func _stopSaveThreads() -> void:
 	_mutex.lock()
 	if _isStopping:
@@ -196,30 +195,58 @@ func _stopSaveThreads() -> void:
 	_isStopping = true
 	_mutex.unlock()
 	
-	for _i in range(MAX_THREADS):
+	for _i in range(_currentThreadsAmount):
 		_semaphore.post()
 	
 	for thread in _saveThreads:
-		if thread.is_alive():
+		# not checking for alive coz thread could exit naturally on finished the work
+		# so closing all the threads been opened anyway
+		if thread.is_started():
 			thread.wait_to_finish()
+	
+	# ensure to cleanup only after threads were stopped 
+	_clearDataAfterSave()
 
 
-func _clearSelfRef() -> void:
-	_selfRefToKeepAlive = null
+func _clearDataAfterSave() -> void:
+	_mutex.lock()
+	
+	# Clear all data for next use
+	_saveQueue.clear()
+	_saveThreads.clear()
+	_savedPaths = []
+	_totalResourcesAmount = 0
+	_completedResourcesAmount = 0
+	_failedResourcesAmount = 0
+	_isStopping = false
+	_savingHasStarted = false
+	_currentThreadsAmount = 0
+	_verifyFilesAccess = true
+	
+	_mutex.unlock()
+	
+	saveReady.emit()
 
 
 # force threads cleanup on instance freed
 # 	(preventing thread leaks if freed instance before it finished the job)
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
+		# Force immediate thread cleanup when being deleted
 		_mutex.lock()
 		_isStopping = true
 		_mutex.unlock()
 		
 		# don't use separate func coz ref will be invalid
-		for _i in range(MAX_THREADS):
+		for _i in range(_currentThreadsAmount):
 			_semaphore.post()
 		
 		for thread in _saveThreads:
 			if thread.is_started():
 				thread.wait_to_finish()
+
+
+# cleanup for singleton remove / plugin disabled etc.
+func _exit_tree():
+	if _savingHasStarted:
+		_stopSaveThreads()
