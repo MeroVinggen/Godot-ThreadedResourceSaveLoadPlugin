@@ -22,6 +22,12 @@
   <img src="./demo-record.gif" height="350" alt="demo record"/>
 </p>
 
+## See my other plugins
+
+- [ProjectileOnCurve2D ](https://github.com/MeroVinggen/Godot-ProjectileOnCurve2DPlugin)
+- [	
+Vector2 editor ](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
+- [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)
 
 ## About
 
@@ -119,7 +125,7 @@ The full params list per file is same as for godot's `ResourceSaver`:
 ```gdscript
 [
   resource: Resource, 
-  path: String = resource.resource_path,
+  path: String | StringName = resource.resource_path,
   flags: BitField[SaverFlags] = 0
 ]
 ```
@@ -168,8 +174,8 @@ ThreadedSaver.start(
    
 > [!TIP]  
 > - `STRING_NAME` type is also supported
-> -  the key is string name to access the loaded resource (if you path empty string - the resource path will be used as key)
-> - See full params list at [Item params](#Item-params-1)
+> - the key - is a name to access the loaded resource (if you path an empty string - the resource path will be used as a key)
+> - see full params list at [Item params](#Item-params-1)
 
 ```gdscript
 ThreadedLoader.add([
@@ -271,14 +277,14 @@ func start_load() -> void:
   ])
 
 func _on_load_completed(loadedFiles: Dictionary) -> void:
-  loadedFiles.img   # accessing loaded "res://1.jpg"
-  loadedFiles.scene # accessing loaded "res://2.tscn"
+  loadedFiles.img   # accessing loaded resource from "res://1.jpg"
+  loadedFiles.scene # accessing loaded resource from "res://2.tscn"
 ```
 
 or you may iterate the `loadedFiles` dictionary in loop. 
 
 
-### General
+## General
 
 1. You can globally silence all warnings as shown below:
 
@@ -386,11 +392,3 @@ ThreadedSaver.add([
 ```
 
 If you need the new `start` params to be used - check saver / loader is idle via `is_idle` method and wait till it finish all current work, with the `becameIdle` signal. 
-
-
-## See my other plugins
-
-- [ProjectileOnCurve2D ](https://github.com/MeroVinggen/Godot-ProjectileOnCurve2DPlugin)
-- [	
-Vector2 editor ](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
-- [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)
