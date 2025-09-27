@@ -5,7 +5,7 @@ extends Node
 class_name ThreadedResourceLoader
 
 signal loadStarted(totalResources: int)
-# typing: resource_name -> key from _resesPathToNameMap
+# typing: resource_key -> key from _resesPathToKeyMap
 signal loadProgress(completedCount: int, totalResources: int, resource: Resource, resource_key: String)
 # typing: loadedFiles -> Dictionary[String, Resource]
 signal loadCompleted(loadedFiles: Dictionary)
@@ -29,10 +29,10 @@ var _loadedFiles: Dictionary = {}
 var _isStopping: bool = false
 var _loadingHasStarted: bool = false
 var _currentThreadsAmount: int = 0
-# if no name passed for resource - path will be used insetead (don't use resource_name 
+# if no key passed for resource - path will be used insetead (don't use resource_key 
 #	to prevent confusion for reses with the same names)
 # typing: Dictionary[String, String]
-var _resesPathToNameMap: Dictionary = {}
+var _resesPathToKeyMap: Dictionary = {}
 # flag for start calls during cleaning (stopping) stage
 var _auto_start_on_ready: bool = false
 var _auto_start_on_ready_thread_amount: int = 0
@@ -86,7 +86,7 @@ func add(resources: Array[Array]) -> ThreadedResourceLoader:
 
 
 func _keyExist(key: String) -> bool:
-	return _resesPathToNameMap.has(key) or _idleQueue.any(func(params: Array) -> bool: return params[0] == key)
+	return _resesPathToKeyMap.has(key) or _idleQueue.any(func(params: Array) -> bool: return params[0] == key)
 
 
 func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourceLoader:
@@ -147,14 +147,14 @@ func _initThreadPool(threadsAmount: int) -> void:
 # when _idleQueue been merged with _activeQueue after loading has started
 #	duplicated keys been filtered in `add`
 func _processPathToNameMap() -> void:
-	var resource_name: String
+	var resource_key: String
 	for loadItem in _idleQueue:
-		resource_name = loadItem.pop_front()
+		resource_key = loadItem.pop_front()
 		# if pased name is empty - use resource path
-		if resource_name.is_empty():
-			resource_name = loadItem[0]
+		if resource_key.is_empty():
+			resource_key = loadItem[0]
 		
-		_resesPathToNameMap[loadItem[0]] = resource_name
+		_resesPathToKeyMap[loadItem[0]] = resource_key
 
 
 func _loadThreadWorker() -> void:
@@ -179,7 +179,7 @@ func _loadThreadWorker() -> void:
 		_mutex.lock()
 		if resource:
 			_completedResourcesAmount += 1
-			_loadedFiles[_resesPathToNameMap[resource.resource_path]] = resource
+			_loadedFiles[_resesPathToKeyMap[resource.resource_path]] = resource
 			
 			call_deferred(
 				"emit_signal", 
@@ -187,7 +187,7 @@ func _loadThreadWorker() -> void:
 				_completedResourcesAmount, 
 				_totalResourcesAmount,
 				resource,
-				_resesPathToNameMap[resource.resource_path],
+				_resesPathToKeyMap[resource.resource_path],
 			)
 		else:
 			_failedResourcesAmount += 1
@@ -241,7 +241,7 @@ func _clearDataAfterLoad() -> void:
 	_isStopping = false
 	_loadingHasStarted = false
 	_currentThreadsAmount = 0
-	_resesPathToNameMap.clear()
+	_resesPathToKeyMap.clear()
 	
 	if _idleQueue.is_empty():
 		_auto_start_on_ready = false
