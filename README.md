@@ -34,8 +34,11 @@ This plugin allows you to save/load resources <b>fast</b> in the background usin
 ## Features
 
 - Adjusting threads amount to use per task
-- progress (files amount)/errors/start/complete signals 
+- progress/errors/start/complete signals 
 - optional files access verification after save
+- batching for resources saving 
+- easy resources access on multiple resource load
+- easy to use, no additional config needed
   
 
 ## Requirements 
@@ -284,11 +287,13 @@ ThreadedSaver.ignoreWarnings = true
 ThreadedLoader.ignoreWarnings = true
 ```
 
-2. Both `ThreadedSaver` and `ThreadedLoader` has `is_idle` to get is it in idle state (doing nothing right now) and `get_current_threads_amount` to get currently used threads amount (will be 0 if in idle state)
+2. `ThreadedSaver` batches the passed resources to save, so if you simultaneously call saving for the same path - only the last one (newest) will be processed. This will gain you a bit of performance, depending on saving frequency and file sizes by cutting the redundant work.
 
-3. In both `ThreadedSaver` and `ThreadedLoader` when the all job is done - cleaning starts and the threads are freed. At this moment all your new `start` calls will be delayed till cleaning finished and the `becameIdle` signal will be emitted. 
+3. Both `ThreadedSaver` and `ThreadedLoader` has `is_idle` to get is it in idle state (doing nothing right now) and `get_current_threads_amount` to get currently used threads amount (will be 0 if in idle state)
+
+4. In both `ThreadedSaver` and `ThreadedLoader` when the all job is done - cleaning starts and the threads are freed. At this moment all your new `start` calls will be delayed till cleaning finished and the `becameIdle` signal will be emitted. 
    
-4. The `threadsAmount` param for `start` method in both `ThreadedSaver` and `ThreadedLoader` will automatically shrink to processed resources amount and won't change till reaches idle state. It never automatically grows.
+5. The `threadsAmount` param for `start` method in both `ThreadedSaver` and `ThreadedLoader` will automatically shrink to processed resources amount and won't change till reaches idle state. It never automatically grows.
 
 ```gdscript
 ThreadedLoader.add([
