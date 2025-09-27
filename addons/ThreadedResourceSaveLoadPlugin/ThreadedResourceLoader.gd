@@ -34,6 +34,14 @@ func _init() -> void:
 	_mutex = Mutex.new()
 
 
+func is_idle() -> bool:
+	return not _loadingHasStarted
+
+
+func get_current_threads_amount() -> int:
+	return _currentThreadsAmount
+
+
 func add(resources: Array[Array]) -> ThreadedResourceLoader:
 	_mutex.lock()
 	if _loadingHasStarted:
@@ -54,7 +62,6 @@ func add(resources: Array[Array]) -> ThreadedResourceLoader:
 		
 		_loadQueue.append(params)
 	
-	_totalResourcesAmount = _loadQueue.size()
 	_mutex.unlock()
 	
 	return self
@@ -66,6 +73,8 @@ func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourc
 		_mutex.unlock()
 		push_error("loading has already started, current call ignored")
 		return self
+	
+	_totalResourcesAmount = _loadQueue.size()
 	
 	if _totalResourcesAmount == 0:
 		if not ThreadedResourceLoader.ignoreWarnings:
@@ -102,7 +111,6 @@ func _initThreadPool(threadsAmount: int) -> void:
 
 
 func _initResesPathToNameMap() -> void:
-	print(_loadQueue)
 	var resource_name: String
 	for loadItem in _loadQueue:
 		resource_name = loadItem.pop_front()
@@ -111,7 +119,6 @@ func _initResesPathToNameMap() -> void:
 			resource_name = loadItem[0]
 		
 		_resesPathToNameMap[loadItem[0]] = resource_name
-	print(_loadQueue)
 
 
 func _loadThreadWorker() -> void:
@@ -128,7 +135,6 @@ func _loadThreadWorker() -> void:
 			continue
 		
 		var loadItem: Array = _loadQueue.pop_back()
-		var isQueueEmpty: bool = _loadQueue.is_empty()
 		_mutex.unlock()
 		
 		var resource: Resource = ResourceLoader.load.callv(loadItem)
@@ -159,7 +165,7 @@ func _loadThreadWorker() -> void:
 		else:
 			_mutex.unlock()
 			
-			if not isQueueEmpty:
+			if not _loadQueue.is_empty():
 				_semaphore.post()
 
 

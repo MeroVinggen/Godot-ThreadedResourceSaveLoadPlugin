@@ -28,6 +28,13 @@ func _init() -> void:
 	_mutex = Mutex.new()
 
 
+func is_idle() -> bool:
+	return not _savingHasStarted
+
+
+func get_current_threads_amount() -> int:
+	return _currentThreadsAmount
+
 # typing resources -> Array[{ resource: Resource, path: String }]
 func add(resources: Array[Array]) -> ThreadedResourceSaver:
 	_mutex.lock()
@@ -74,7 +81,6 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 		
 		_saveQueue.append(params)
 	
-	_totalResourcesAmount = _saveQueue.size()
 	_mutex.unlock()
 	
 	return self
@@ -86,6 +92,8 @@ func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processo
 		_mutex.unlock()
 		push_error("saving has already started, current call ignored")
 		return self
+	
+	_totalResourcesAmount = _saveQueue.size()
 	
 	if _totalResourcesAmount == 0:
 		if not ThreadedResourceSaver.ignoreWarnings:
@@ -135,7 +143,6 @@ func _saveThreadWorker() -> void:
 			continue
 		
 		var saveParams: Array = _saveQueue.pop_back()
-		var isQueueEmpty: bool = _saveQueue.is_empty()
 		
 		_mutex.unlock()
 		
@@ -158,7 +165,7 @@ func _saveThreadWorker() -> void:
 		else:
 			_mutex.unlock()
 			
-			if not isQueueEmpty:
+			if not _saveQueue.is_empty():
 				_semaphore.post()
 
 
