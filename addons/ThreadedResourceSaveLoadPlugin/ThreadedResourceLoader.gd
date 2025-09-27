@@ -145,7 +145,7 @@ func _initThreadPool(threadsAmount: int) -> void:
 
 
 # when _idleQueue been merged with _activeQueue after loading has started
-#	duplicates been filtered in mergeIdleQueue
+#	duplicated keys been filtered in `add`
 func _processPathToNameMap() -> void:
 	var resource_name: String
 	for loadItem in _idleQueue:
@@ -269,6 +269,7 @@ func _notification(what: int) -> void:
 		for thread in _threads:
 			if thread.is_started():
 				thread.wait_to_finish()
+		
 		_mutex.unlock()
 
 
