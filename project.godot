@@ -27,4 +27,3 @@ enabled=PackedStringArray("res://addons/ThreadedResourceSaveLoadPlugin/plugin.cf
 [rendering]
 
 renderer/rendering_method="mobile"
-

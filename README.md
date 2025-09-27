@@ -129,7 +129,7 @@ The full params list per file is same as for godot's `ResourceSaver`:
 signal saveStarted(totalResources: int)
 
 # is emitted per saved file (doesn't include access verification! see "Constructor params" section)
-signal saveProgress(completedCount: int, totalResources: int)
+signal saveProgress(completedCount: int, totalResources: int, savedPath: String)
 
 # is emitted when all files been saved (including access verification)
 signal saveCompleted(savedPaths: Array[String])
@@ -137,8 +137,8 @@ signal saveCompleted(savedPaths: Array[String])
 # is emitted per saving err
 signal saveError(path: String, errorCode: Error)
 
-# is emitted when ready for the next saving call (goes after `saveCompleted` signal)
-signal saveReady()
+# is emitted when all the job is finished and prev threads and data are cleared (see `General` section for more details)
+signal becameIdle()
 ```
 
 
@@ -240,8 +240,8 @@ signal loadCompleted(loadedFiles: Dictionary)
 # is emitted per loading err
 signal loadError(path: String)
 
-# is emitted when ready for the next loading call (goes after `loadCompleted` signal)
-signal loadReady()
+# is emitted when all the job is finished and prev threads and data are cleared (see `General` section for more details)
+signal becameIdle()
 ```
 
 
@@ -252,7 +252,7 @@ ThreadedLoader.start(
   threadsAmount: int = OS.get_processor_count() - 1
 )
 ```
-`threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount)..
+`threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
 
 ### Accessing loaded resources
@@ -274,26 +274,47 @@ func _on_load_completed(loadedFiles: Dictionary) -> void:
 
 or you may iterate the `loadedFiles` dictionary in loop. 
 
-### Global config
 
-You can globally silence all warnings as shown below:
+### General
+
+1. You can globally silence all warnings as shown below:
 
 ```gdscript
 ThreadedSaver.ignoreWarnings = true
 ThreadedLoader.ignoreWarnings = true
 ```
 
+2. Both `ThreadedSaver` and `ThreadedLoader` has `is_idle` to get is it in idle state (doing nothing right now) and `get_current_threads_amount` to get currently used threads amount (will be 0 if in idle state)
+
+3. In both `ThreadedSaver` and `ThreadedLoader` when the all job is done - cleaning starts and the threads are freed. At this moment all your new `start` calls will be delayed till cleaning finished and the `becameIdle` signal will be emitted. 
+   
+4. The `threadsAmount` param for `start` method in both `ThreadedSaver` and `ThreadedLoader` will automatically shrink to processed resources amount and won't change till reaches idle state. It never automatically grows.
+
+```gdscript
+ThreadedLoader.add([
+  ["shuriken", "res://shuriken.jpg"],
+  ["board", "res://board.jpg"],
+]).start(5) # will be cut to 2 threads
+
+...
+
+ThreadedLoader.add([
+  ["shuriken", "res://shuriken.jpg"],
+  ["board", "res://board.jpg"],
+]).start(1) # will be used 1 thread
+```
+
 
 ### Caution
 
-1. To gain more performance batch save / load calls with `add` method instead of saving / loading each file separately (less `start` calls == performance)
+1. Batch `start` calls for save / load operations with `add` method instead of saving / loading each file separately (less `start` calls < performance)
 
 ```gdscript
 # ---- bad
 
 ThreadedLoader.add([["shuriken", "res://shuriken.jpg"]]).start()
 ...
-await ThreadedLoader.loadReady
+await ThreadedLoader.becameIdle
 ThreadedLoader.add([["board", "res://board.jpg"]]).start()
 ...
 
@@ -308,10 +329,8 @@ ThreadedLoader.add([
 ```
 
 2. Prefer explicit signal connections instead of `await` to avoid possible issues with godot (more info in #4)
-
-3. After each finished saving / loading session (the `saveCompleted` / `loadCompleted` signals) singletons won't be available for next `start` call until they emit the `saveReady` / `loadReady` signal
  
-4. If you will use ThreadedLoader with `await` to load file that makes the same inside - the inner `await` will never resolve:
+3. If you will use ThreadedLoader with `await` to load file that makes the same inside - the inner `await` will never resolve:
 
 ```gdscript
 # ---- file: main.gd
@@ -343,6 +362,25 @@ ThreadedLoader.start(OS.get_processor_count())
 ```
 
 6. Don't use "small deploy with network file system" for remote deploy, it will randomly cause resource loading errs. If you willing so or have to use it - to avoid the errs you will need to re-launch the project (maybe few time in a row).
+  
+7. The `start` params are ignored if been called when save / load was already in progress and the initial params will be used:
+
+```gdscript
+# start saving without `verifyFilesAccess`
+ThreadedSaver.add([
+  [res1, path1],
+  [res2, path2],
+  [res3, path3],
+]).start(false, 3)
+
+# start saving with `verifyFilesAccess`
+ThreadedSaver.add([
+  [res4, path4],
+]).start(true) # if prev save is in progress at this point - this param will be ignored and file access for res4 won't be verified
+
+```
+
+If you need the new `start` params to be used - check saver / loader is idle via `is_idle` method and wait till it finish all current work, with the `becameIdle` signal. 
 
 
 ## See my other plugins
