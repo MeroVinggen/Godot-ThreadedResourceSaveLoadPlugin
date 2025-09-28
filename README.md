@@ -44,7 +44,7 @@ This plugin allows you to save/load resources <b>fast</b> in the background usin
 - optional files access verification after save
 - batching for resources saving 
 - easy resources access on multiple resource load
-- easy to use, no additional config needed
+- loading by groups
   
 
 ## Requirements 
@@ -86,7 +86,7 @@ ThreadedSaver.add([
 2. listen to needed signals
 
 ```gdscript
-ThreadedSaver.saveCompleted.connect(_on_save_completed, CONNECT_ONE_SHOT)
+ThreadedSaver.saveFinished.connect(_on_save_completed, CONNECT_ONE_SHOT)
 ```
 
 3. start saving by calling `start` method
@@ -105,7 +105,7 @@ await ThreadedSaver.add([
   [<your resource>, <your path to save>],
   [<your resource>, <your path to save>],
   ...
-]).start().saveCompleted
+]).start().saveFinished
 
 # or
 
@@ -113,7 +113,7 @@ ThreadedSaver.add([
   [<your resource>, <your path to save>],
   [<your resource>, <your path to save>],
   ...
-]).start().saveCompleted.connect(_on_save_completed, CONNECT_ONE_SHOT)
+]).start().saveFinished.connect(_on_save_completed, CONNECT_ONE_SHOT)
 
 ```
 
@@ -141,7 +141,7 @@ signal saveStarted(totalResources: int)
 signal saveProgress(completedCount: int, totalResources: int, savedPath: String)
 
 # is emitted when all files been saved (including access verification)
-signal saveCompleted(savedPaths: Array[String])
+signal saveFinished(savedPaths: Array[String])
 
 # is emitted per saving err
 signal saveError(path: String, errorCode: Error)
@@ -161,7 +161,7 @@ ThreadedSaver.start(
 )
 ```
 
-`verifyFilesAccess` - ensures to emit `saveCompleted` signal after saved files become accessible, useful when you need to change them right after saving but takes more time to process (depending on users system).
+`verifyFilesAccess` - ensures to emit `saveFinished` signal after saved files become accessible, useful when you need to change them right after saving but takes more time to process (depending on users system).
 
 `threadsAmount` - how many threads will be used to process saving. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
@@ -179,8 +179,8 @@ ThreadedSaver.start(
 
 ```gdscript
 ThreadedLoader.add([
-  [<your key for resource>, <your path to load>],
-  [<your key for resource>, <your path to load>],
+  [<your resource key>, <your load path>],
+  [<your resource key>, <your load path>],
   ...
 ])
 ```
@@ -188,7 +188,7 @@ ThreadedLoader.add([
 1. listen to needed signals
    
 ```gdscript
-ThreadedLoader.loadCompleted.connect(_on_load_completed, CONNECT_ONE_SHOT)
+ThreadedLoader.loadFinished.connect(_on_load_completed, CONNECT_ONE_SHOT)
 ```
 
 3. start loading by calling `start` method 	
@@ -204,18 +204,18 @@ Also you may use inline loading and chain methods call:
 
 ```gdscript
 await ThreadedLoader.add([
-  [<your key for resource>, <your path to load>],
-  [<your key for resource>, <your path to load>],
+  [<your resource key>, <your load path>],
+  [<your resource key>, <your load path>],
   ...
-]).start().loadCompleted
+]).start().loadFinished
 
 # or
 
 ThreadedLoader.add([
-  [<your key for resource>, <your path to load>],
-  [<your key for resource>, <your path to load>],
+  [<your resource key>, <your load path>],
+  [<your resource key>, <your load path>],
   ...
-]).start().loadCompleted.connect(_on_load_completed, CONNECT_ONE_SHOT)
+]).start().loadFinished.connect(_on_load_completed, CONNECT_ONE_SHOT)
 
 ```
 
@@ -244,7 +244,10 @@ signal loadStarted(totalResources: int)
 signal loadProgress(completedCount: int, totalResources: int, resource: Resource, resource_key: String)
 
 # is emitted when all files been loaded
-signal loadCompleted(loadedFiles: Dictionary)
+signal loadFinished(loadedFiles: Dictionary)
+
+# is emitted when all resources in a group been loaded
+signal loadGroup(groupName: String, loaded: Dictionary, failed: Dictionary)
 
 # is emitted per loading err
 signal loadError(path: String)
@@ -266,11 +269,11 @@ ThreadedLoader.start(
 
 ### Accessing loaded resources
 
-`ThreadedLoader` provides you with `resource` itself and its `key` and `Dictionary[key: resource]` in `loadCompleted`
+`ThreadedLoader` provides you with `resource` itself and its `key` and `Dictionary[key: resource]` in `loadFinished`
 
 ```gdscript
 func start_load() -> void:
-  ThreadedLoader.loadCompleted.connect(_on_load_completed, CONNECT_ONE_SHOT)
+  ThreadedLoader.loadFinished.connect(_on_load_completed, CONNECT_ONE_SHOT)
   ThreadedLoader.add([
     ["img", [res://1.jpg],
     ["scene", [res://2.tscn],
@@ -282,6 +285,66 @@ func _on_load_completed(loadedFiles: Dictionary) -> void:
 ```
 
 or you may iterate the `loadedFiles` dictionary in loop. 
+
+
+### Loading by groups
+
+
+#### Params
+
+```gdscript
+ThreadedLoader.add_group(
+  group_name: String,
+  resources: Array[Array],
+  ignore_in_finished: bool = false
+)
+```
+
+`group_name` - will be passed to `loadGroup` signal when group will be loaded
+
+`resources` - array of resources to load (same as for `add` method)
+
+`ignore_in_finished` - flag to not include all the resource from this group in `loadFinished` signal
+
+
+#### Usage
+
+You can load resources as groups:
+
+```gdscript
+ThreadedLoader.loadGroup.connect(_on_group_loaded)
+
+ThreadedLoader.add_group("group1", [
+  [<your resource key>, <your load path>],
+  [<your resource key>, <your load path>],
+])
+
+ThreadedLoader.add_group("group2", [
+  [<your resource key>, <your load path>],
+  [<your resource key>, <your load path>],
+])
+
+ThreadedLoader.start()
+
+func _on_group_loaded(group_name, loaded, failed) -> void:
+  #handle loaded group
+
+```
+
+You can you use it alongside single resources:
+
+```gdscript
+ThreadedLoader.add_group("group1", [
+  [<your resource key>, <your load path>],
+  [<your resource key>, <your load path>],
+])
+
+ThreadedLoader.add([
+  [<your resource key>, <your load path>],
+  [<your resource key>, <your load path>],
+])
+
+```
 
 
 ## General
@@ -348,7 +411,7 @@ ThreadedLoader.add([
 
 
 func _loadSubResource() -> void:
-  await ThreadedLoader.add[["cll", "cll.gd"]].start().loadCompleted
+  await ThreadedLoader.add[["cll", "cll.gd"]].start().loadFinished
 
 
 # ---- file: cll.gd
@@ -356,8 +419,8 @@ func _loadSubResource() -> void:
 
 var cll: Array[Resource] = [
   # never resolve!
-  await ThreadedLoader.add[["t1", "texture1.png"]].start().loadCompleted,
-  await ThreadedLoader.add[["t2", "texture2.png"]].start().loadCompleted,
+  await ThreadedLoader.add[["t1", "texture1.png"]].start().loadFinished,
+  await ThreadedLoader.add[["t2", "texture2.png"]].start().loadFinished,
   ...
 ]
 

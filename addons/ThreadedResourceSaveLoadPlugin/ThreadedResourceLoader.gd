@@ -5,10 +5,13 @@ extends Node
 class_name ThreadedResourceLoader
 
 signal loadStarted(totalResources: int)
-# typing: resource_key -> key from _resesPathToKeyMap
+# typing: resource_key -> key from _resourcePathToKeyMap
 signal loadProgress(completedCount: int, totalResources: int, resource: Resource, resource_key: String)
-# typing: loadedFiles -> Dictionary[String, Resource]
-signal loadCompleted(loadedFiles: Dictionary)
+# typing: loaded -> Dictionary[key: String, res: Resource]
+# typing: failed -> Dictionary[key: String, path: String]
+signal loadGroup(groupName: String, loaded: Dictionary, failed: Dictionary)
+# typing: loadedFiles -> Dictionary[key: String, res: Resource]
+signal loadFinished(loadedFiles: Dictionary)
 signal loadError(path: String)
 signal becameIdle()
 
@@ -31,11 +34,17 @@ var _loadingHasStarted: bool = false
 var _currentThreadsAmount: int = 0
 # if no key passed for resource - path will be used insetead (don't use resource_key 
 #	to prevent confusion for reses with the same names)
+#	clearing only in cleaning func (don't erase each loaded/failed res)
 # typing: Dictionary[String, String]
-var _resesPathToKeyMap: Dictionary = {}
+var _resourcePathToKeyMap: Dictionary = {}
 # flag for start calls during cleaning (stopping) stage
 var _auto_start_on_ready: bool = false
 var _auto_start_on_ready_thread_amount: int = 0
+# typing: Dictionary[group_name: String, {loaded: Array[Resource], failed: Array[resource_path: String], finished: int = 0, total: int = 0, ignore_in_finished: bool}]
+var _groups: Dictionary = {}
+# like `_resourcePathToKeyMap` but for groups (to get res group on load/err)
+#	forming in `add_group`
+var _resourcePathToGroupMap: Dictionary = {}
 
 
 func _init() -> void:
@@ -57,36 +66,79 @@ func get_current_threads_amount() -> int:
 	return result
 
 
-func add(resources: Array[Array]) -> ThreadedResourceLoader:
+func add_group(group_name: String, resources: Array[Array], ignore_in_finished: bool = false):
 	_mutex.lock()
 	
 	for params in resources:
-		# not enough params
-		if params.size() < 2: 
-			push_error("too few arguments in params array, will be ignored")
-			continue
-		# key param has incorrect type 
-		elif typeof(params[0]) != TYPE_STRING and typeof(params[0]) != TYPE_STRING_NAME:
-			push_error("invalid param value: \"{0}\" for resource key, it should be a type of String or StringName, will be ignored".format([params[0]]))
-			continue
-		# path param has incorrect type 
-		elif (typeof(params[1]) != TYPE_STRING and typeof(params[1]) != TYPE_STRING_NAME) or params[1].strip_edges() == "":
-			push_error("invalid param value: \"{0}\" for resource path, it should be a non-empty String or StringName, will be ignored".format([params[1]]))
-			continue
-		# skip if key already exists
-		elif params[0].strip_edges() != "" and _keyExist(params[0]):
-			if not ThreadedResourceLoader.ignoreWarnings:
-				push_warning("key \"{0}\" already exists, resource will be ignored".format(params[0]))
+		if _areParamsValid(params):
+			_idleQueue.append(params)
+			
+			if not _groups.has(group_name):
+				_groups[group_name] = {
+					"loaded": {}, 
+					"failed": {}, 
+					"finished": 0, 
+					"total": 0,
+					"ignore_in_finished": ignore_in_finished
+				}
+			
+			_groups[group_name].total += 1
+			_resourcePathToKeyMap[params[0]] = _getResourceKey(params)
+			_resourcePathToGroupMap[params[0]] = group_name
 		
-		_idleQueue.append(params)
 	
 	_mutex.unlock()
 	
 	return self
 
 
+func add(resources: Array[Array]) -> ThreadedResourceLoader:
+	_mutex.lock()
+	
+	for params in resources:
+		if _areParamsValid(params):
+			_idleQueue.append(params)
+			
+			_resourcePathToKeyMap[params[0]] = _getResourceKey(params)
+	
+	_mutex.unlock()
+	
+	return self
+
+
+func _getResourceKey(params: Array) -> String:
+	var resource_key = params.pop_front()
+	# if pased name is empty - use resource path
+	if resource_key.is_empty():
+		resource_key = params[0]
+	
+	return resource_key
+
+
+func _areParamsValid(params: Array) -> bool:
+	# not enough params
+	if params.size() < 2: 
+		push_error("too few arguments in params array, will be ignored")
+		return false
+	# key param has incorrect type 
+	elif typeof(params[0]) != TYPE_STRING and typeof(params[0]) != TYPE_STRING_NAME:
+		push_error("invalid param value: \"{0}\" for resource key, it should be a type of String or StringName, will be ignored".format([params[0]]))
+		return false
+	# path param has incorrect type or empty
+	elif (typeof(params[1]) != TYPE_STRING and typeof(params[1]) != TYPE_STRING_NAME) or params[1].strip_edges() == "":
+		push_error("invalid param value: \"{0}\" for resource path, it should be a non-empty String or StringName, will be ignored".format([params[1]]))
+		return false
+	# skip if key already exists
+	elif params[0].strip_edges() != "" and _keyExist(params[0]):
+		if not ThreadedResourceLoader.ignoreWarnings:
+			push_warning("key \"{0}\" already exists, resource will be ignored".format(params[0]))
+		return false
+	
+	return true
+
+
 func _keyExist(key: String) -> bool:
-	return _resesPathToKeyMap.has(key) or _idleQueue.any(func(params: Array) -> bool: return params[0] == key)
+	return _resourcePathToKeyMap.has(key) or _idleQueue.any(func(params: Array) -> bool: return params[0] == key)
 
 
 func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourceLoader:
@@ -98,13 +150,13 @@ func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourc
 		_mutex.unlock()
 		return self
 	
-	mergeIdleQueue()
+	_activeQueue.append_array(_idleQueue)
 	_totalResourcesAmount += _idleQueue.size()
 	
 	if _totalResourcesAmount == 0:
 		if not ThreadedResourceLoader.ignoreWarnings:
 			push_warning("load queue is empty, immediate finish loading signal emission")
-		call_deferred("emit_signal", "loadCompleted", _loadedFiles)
+		call_deferred("emit_signal", "loadFinished", _loadedFiles)
 		_mutex.unlock()
 		if _loadingHasStarted:
 			_stopLoadThreads.call_deferred()
@@ -129,11 +181,6 @@ func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourc
 	return self
 
 
-func mergeIdleQueue() -> void:
-	_activeQueue.append_array(_idleQueue)
-	_processPathToNameMap()
-
-
 func _initThreadPool(threadsAmount: int) -> void:
 	var actualThreadsNeeded = min(threadsAmount, _totalResourcesAmount)
 	var thread: Thread
@@ -142,19 +189,6 @@ func _initThreadPool(threadsAmount: int) -> void:
 		_threads.append(thread)
 		thread.start(_loadThreadWorker)
 	_currentThreadsAmount = actualThreadsNeeded
-
-
-# when _idleQueue been merged with _activeQueue after loading has started
-#	duplicated keys been filtered in `add`
-func _processPathToNameMap() -> void:
-	var resource_key: String
-	for loadItem in _idleQueue:
-		resource_key = loadItem.pop_front()
-		# if pased name is empty - use resource path
-		if resource_key.is_empty():
-			resource_key = loadItem[0]
-		
-		_resesPathToKeyMap[loadItem[0]] = resource_key
 
 
 func _loadThreadWorker() -> void:
@@ -179,7 +213,26 @@ func _loadThreadWorker() -> void:
 		_mutex.lock()
 		if resource:
 			_completedResourcesAmount += 1
-			_loadedFiles[_resesPathToKeyMap[resource.resource_path]] = resource
+			
+			if _resourcePathToGroupMap.has(loadItem[0]):
+				var group: Dictionary = _groups[_resourcePathToGroupMap[resource.resource_path]]
+				group.loaded[_resourcePathToKeyMap[resource.resource_path]] = resource
+				group.finished += 1
+				
+				if not group.ignore_in_finished:
+					_loadedFiles[_resourcePathToKeyMap[resource.resource_path]] = resource
+				
+				if group.finished == group.total:
+					call_deferred(
+						"emit_signal", 
+						"loadGroup", 
+						_resourcePathToGroupMap[resource.resource_path],
+						group.loaded, 
+						group.failed,
+					)
+					_groups.erase(_resourcePathToGroupMap[resource.resource_path])
+			else:
+				_loadedFiles[_resourcePathToKeyMap[resource.resource_path]] = resource
 			
 			call_deferred(
 				"emit_signal", 
@@ -187,16 +240,21 @@ func _loadThreadWorker() -> void:
 				_completedResourcesAmount, 
 				_totalResourcesAmount,
 				resource,
-				_resesPathToKeyMap[resource.resource_path],
+				_resourcePathToKeyMap[resource.resource_path],
 			)
 		else:
+			if _resourcePathToGroupMap.has(loadItem[0]):
+				var group: Dictionary = _groups[_resourcePathToGroupMap[loadItem[0]]]
+				group.failed[_resourcePathToKeyMap[loadItem[0]]] = loadItem[0]
+				group.finished += 1
+				
 			_failedResourcesAmount += 1
 			call_deferred("emit_signal", "loadError", loadItem[0])
 		
 		var isLoadComplete: bool = _completedResourcesAmount + _failedResourcesAmount >= _totalResourcesAmount
 		
 		if isLoadComplete:
-			call_deferred("emit_signal", "loadCompleted", _loadedFiles)
+			call_deferred("emit_signal", "loadFinished", _loadedFiles)
 			_mutex.unlock()
 			_stopLoadThreads.call_deferred()
 		else:
@@ -241,7 +299,9 @@ func _clearDataAfterLoad() -> void:
 	_isStopping = false
 	_loadingHasStarted = false
 	_currentThreadsAmount = 0
-	_resesPathToKeyMap.clear()
+	_resourcePathToKeyMap.clear()
+	_resourcePathToGroupMap.clear()
+	_groups.clear()
 	
 	if _idleQueue.is_empty():
 		_auto_start_on_ready = false
