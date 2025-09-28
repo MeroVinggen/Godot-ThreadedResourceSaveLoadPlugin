@@ -3,7 +3,7 @@ class_name ThreadedResourceSaver
 
 signal saveStarted(totalResources: int)
 signal saveProgress(completedCount: int, totalResources: int, savedPath: String)
-signal saveCompleted(savedPaths: Array[String])
+signal saveFinished(savedPaths: Array[String])
 signal saveError(path: String, errorCode: Error)
 signal becameIdle()
 
@@ -108,13 +108,13 @@ func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processo
 		_mutex.unlock()
 		return self
 	
-	mergeIdleQueue()
+	_activeQueue.append_array(_idleQueue.values())
 	_totalResourcesAmount += _idleQueue.size()
 	
 	if _totalResourcesAmount == 0:
 		if not ThreadedResourceSaver.ignoreWarnings:
 			push_warning("save queue is empty, immediate finish saving signal emission")
-		call_deferred("emit_signal", "saveCompleted", _savedPaths)
+		call_deferred("emit_signal", "saveFinished", _savedPaths)
 		_mutex.unlock()
 		if _savingHasStarted:
 			_stopSaveThreads.call_deferred()
@@ -138,10 +138,6 @@ func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processo
 	_mutex.unlock()
 	
 	return self
-
-
-func mergeIdleQueue() -> void:
-	_activeQueue.append_array(_idleQueue.values())
 
 
 func _initThreadPool(threadsAmount: int) -> void:
@@ -206,7 +202,7 @@ func _verifyFileReadinessAccess() -> void:
 	_mutex.unlock()
 	
 	if not _verifyFilesAccess:
-		call_deferred("emit_signal", "saveCompleted", savedPathsCopy)
+		call_deferred("emit_signal", "saveFinished", savedPathsCopy)
 		_stopSaveThreads.call_deferred()
 		return
 	
@@ -220,7 +216,7 @@ func _verifyFileReadinessAccess() -> void:
 			_stopSaveThreads.call_deferred()
 			return
 	
-	call_deferred("emit_signal", "saveCompleted", savedPathsCopy)
+	call_deferred("emit_signal", "saveFinished", savedPathsCopy)
 	_stopSaveThreads.call_deferred()
 
 
