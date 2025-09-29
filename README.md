@@ -39,7 +39,7 @@ This plugin allows you to save/load resources <b>fast</b> in the background usin
 
 ## Features
 
-- Adjusting threads amount to use per task
+- adjusting threads amount to use per task
 - progress/errors/start/complete signals 
 - optional files access verification after save
 - batching for resources saving 
