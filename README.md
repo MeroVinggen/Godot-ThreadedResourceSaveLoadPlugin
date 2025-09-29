@@ -45,6 +45,7 @@ This plugin allows you to save/load resources <b>fast</b> in the background usin
 - batching for resources saving 
 - easy resources access on multiple resource load
 - loading by groups
+- loading by resource pass or UID path
   
 
 ## Requirements 

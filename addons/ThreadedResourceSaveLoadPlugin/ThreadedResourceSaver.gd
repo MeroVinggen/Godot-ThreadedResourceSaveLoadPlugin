@@ -170,19 +170,22 @@ func _saveThreadWorker() -> void:
 		var error: Error = ResourceSaver.save.callv(saveParams)
 		
 		_mutex.lock()
+		
+		var resource_path: String = saveParams[0]
+		
 		if error == OK:
 			_completedResourcesAmount += 1
-			_savedPaths.append(saveParams[1])
+			_savedPaths.append(resource_path)
 			call_deferred(
 				"emit_signal", 
 				"saveProgress", 
 				_completedResourcesAmount, 
 				_totalResourcesAmount,
-				saveParams[1]
+				resource_path
 			)
 		else:
 			_failedResourcesAmount += 1
-			call_deferred("emit_signal", "saveError", saveParams[1], error)
+			call_deferred("emit_signal", "saveError", resource_path, error)
 		
 		var isSaveComplete: bool = _completedResourcesAmount + _failedResourcesAmount >= _totalResourcesAmount
 		

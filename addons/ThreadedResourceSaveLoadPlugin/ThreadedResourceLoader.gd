@@ -211,28 +211,31 @@ func _loadThreadWorker() -> void:
 		var resource: Resource = ResourceLoader.load.callv(loadItem)
 		
 		_mutex.lock()
+		
+		var resource_path: String = loadItem[0]
+		
 		if resource:
 			_completedResourcesAmount += 1
 			
-			if _resourcePathToGroupMap.has(loadItem[0]):
-				var group: Dictionary = _groups[_resourcePathToGroupMap[resource.resource_path]]
-				group.loaded[_resourcePathToKeyMap[resource.resource_path]] = resource
+			if _resourcePathToGroupMap.has(resource_path):
+				var group: Dictionary = _groups[_resourcePathToGroupMap[resource_path]]
+				group.loaded[_resourcePathToKeyMap[resource_path]] = resource
 				group.finished += 1
 				
 				if not group.ignore_in_finished:
-					_loadedFiles[_resourcePathToKeyMap[resource.resource_path]] = resource
+					_loadedFiles[_resourcePathToKeyMap[resource_path]] = resource
 				
 				if group.finished == group.total:
 					call_deferred(
 						"emit_signal", 
 						"loadGroup", 
-						_resourcePathToGroupMap[resource.resource_path],
+						_resourcePathToGroupMap[resource_path],
 						group.loaded, 
 						group.failed,
 					)
-					_groups.erase(_resourcePathToGroupMap[resource.resource_path])
+					_groups.erase(_resourcePathToGroupMap[resource_path])
 			else:
-				_loadedFiles[_resourcePathToKeyMap[resource.resource_path]] = resource
+				_loadedFiles[_resourcePathToKeyMap[resource_path]] = resource
 			
 			call_deferred(
 				"emit_signal", 
@@ -240,16 +243,16 @@ func _loadThreadWorker() -> void:
 				_completedResourcesAmount, 
 				_totalResourcesAmount,
 				resource,
-				_resourcePathToKeyMap[resource.resource_path],
+				_resourcePathToKeyMap[resource_path],
 			)
 		else:
-			if _resourcePathToGroupMap.has(loadItem[0]):
-				var group: Dictionary = _groups[_resourcePathToGroupMap[loadItem[0]]]
-				group.failed[_resourcePathToKeyMap[loadItem[0]]] = loadItem[0]
+			if _resourcePathToGroupMap.has(resource_path):
+				var group: Dictionary = _groups[_resourcePathToGroupMap[resource_path]]
+				group.failed[_resourcePathToKeyMap[resource_path]] = resource_path
 				group.finished += 1
 				
 			_failedResourcesAmount += 1
-			call_deferred("emit_signal", "loadError", loadItem[0])
+			call_deferred("emit_signal", "loadError", resource_path)
 		
 		var isLoadComplete: bool = _completedResourcesAmount + _failedResourcesAmount >= _totalResourcesAmount
 		
