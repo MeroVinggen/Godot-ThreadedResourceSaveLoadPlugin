@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./icon.svg" height="100" alt="Godot-ProjectileOnCurve2DPlugin Icon"/>
+  <img src="./icon.svg" height="150" alt="Godot-ProjectileOnCurve2DPlugin Icon"/>
 </p>
 
 <h1 align="center">
