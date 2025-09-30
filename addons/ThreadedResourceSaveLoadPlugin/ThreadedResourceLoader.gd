@@ -29,7 +29,10 @@ var _completedResourcesAmount: int = 0
 var _failedResourcesAmount: int = 0
 # typing: Dictionary[String, Resource]
 var _loadedFiles: Dictionary = {}
+# on loading finished - schedule stopping (cleaning)
 var _isStopping: bool = false
+# on load finished
+var _awaiting_for_cleaning: bool = false
 var _loadingHasStarted: bool = false
 var _currentThreadsAmount: int = 0
 # if no key passed for resource - path will be used insetead (don't use resource_key 
@@ -37,7 +40,7 @@ var _currentThreadsAmount: int = 0
 #	clearing only in cleaning func (don't erase each loaded/failed res)
 # typing: Dictionary[String, String]
 var _resourcePathToKeyMap: Dictionary = {}
-# flag for start calls during cleaning (stopping) stage
+# flag for `start` calls during stopping (cleaning) stage to auto process them when become idle
 var _auto_start_on_ready: bool = false
 var _auto_start_on_ready_thread_amount: int = 0
 # typing: Dictionary[group_name: String, {loaded: Array[Resource], failed: Array[resource_path: String], finished: int = 0, total: int = 0, ignore_in_finished: bool}]
@@ -143,6 +146,8 @@ func _keyExist(key: String) -> bool:
 
 func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourceLoader:
 	_mutex.lock()
+	
+	# if already in stop stage
 	if _isStopping:
 		push_warning("currently in the cleaning stage, the start will be delayed")
 		_auto_start_on_ready = true
@@ -150,18 +155,26 @@ func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourc
 		_mutex.unlock()
 		return self
 	
+	# if stop scheduled - cancel
+	if _awaiting_for_cleaning:
+		_awaiting_for_cleaning = false
+	
 	_activeQueue.append_array(_idleQueue)
 	_totalResourcesAmount += _idleQueue.size()
 	
 	if _totalResourcesAmount == 0:
 		if not ThreadedResourceLoader.ignoreWarnings:
 			push_warning("load queue is empty, immediate finish loading signal emission")
-		call_deferred("emit_signal", "loadFinished", _loadedFiles)
-		_mutex.unlock()
+		
 		if _loadingHasStarted:
-			_stopLoadThreads.call_deferred()
+			if not _awaiting_for_cleaning:
+				_awaiting_for_cleaning = true
+				_on_load_finished.call_deferred()
 		else:
 			_clearDataAfterLoad.call_deferred()
+		
+		call_deferred("emit_signal", "loadFinished", _loadedFiles)
+		_mutex.unlock()
 		return self
 	
 	if not _loadingHasStarted:
@@ -170,10 +183,10 @@ func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourc
 		# Create thread pool for this loading session
 		_initThreadPool(threadsAmount)
 	
-		call_deferred("emit_signal", "loadStarted", _totalResourcesAmount)
+	call_deferred("emit_signal", "loadStarted", _totalResourcesAmount)
 	
-		for _i in range(_currentThreadsAmount):
-			_semaphore.post.call_deferred()
+	for _i in range(_currentThreadsAmount):
+		_semaphore.post.call_deferred()
 	
 	_idleQueue.clear()
 	_mutex.unlock()
@@ -258,13 +271,19 @@ func _loadThreadWorker() -> void:
 		
 		if isLoadComplete:
 			call_deferred("emit_signal", "loadFinished", _loadedFiles)
-			_mutex.unlock()
-			_stopLoadThreads.call_deferred()
+			_awaiting_for_cleaning = true
+			_on_load_finished.call_deferred()
 		else:
-			_mutex.unlock()
-			
 			if not _activeQueue.is_empty():
 				_semaphore.post()
+	
+		_mutex.unlock()
+
+
+func _on_load_finished() -> void:
+	# could be canceled by new `start`
+	if _awaiting_for_cleaning:
+		_stopLoadThreads()
 
 
 # handle also the cleanup (_clearDataAfterLoad call at the end)
@@ -273,6 +292,7 @@ func _stopLoadThreads() -> void:
 	if _isStopping:
 		_mutex.unlock()
 		return
+	
 	_isStopping = true
 	_mutex.unlock()
 	
@@ -305,6 +325,7 @@ func _clearDataAfterLoad() -> void:
 	_resourcePathToKeyMap.clear()
 	_resourcePathToGroupMap.clear()
 	_groups.clear()
+	_awaiting_for_cleaning = false
 	
 	if _idleQueue.is_empty():
 		_auto_start_on_ready = false
@@ -323,6 +344,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		# Force immediate thread cleanup when being deleted
 		_mutex.lock()
+		
 		_isStopping = true
 			
 		# don't use separate func coz ref will be invalid
