@@ -112,6 +112,8 @@ ThreadedSaver.start(
 
 **`get_current_threads_amount`** - returns currently used threads amount
 
+**`is_idle`** - returns bool state of ThreadedSaver
+
 
 ### Signals
 
@@ -230,6 +232,8 @@ ThreadedLoader.start(
 
 **`get_current_threads_amount`** - returns currently used threads amount
 
+**`is_idle`** - returns bool state of ThreadedLoader
+
 
 ### Signals <a id="loader-signals"></a>
 
@@ -257,11 +261,7 @@ ThreadedLoader.ignoreWarnings = true
 
 2. `ThreadedSaver` batches the passed resources to save, so if you simultaneously call saving for the same path - only the last one (newest) will be processed. This will gain you a bit of performance, depending on saving frequency and file sizes by cutting the redundant work.
 
-3. Both `ThreadedSaver` and `ThreadedLoader` has `is_idle` to get is it in idle state (doing nothing right now) and `get_current_threads_amount` to get currently used threads amount (will be 0 if in idle state)
-
-4. In both `ThreadedSaver` and `ThreadedLoader` when the all job is done - cleaning starts and the threads are freed. At this moment all your new `start` calls will be delayed till cleaning finished and the `becameIdle` signal will be emitted. 
-   
-5. The `threadsAmount` param for `start` method in both `ThreadedSaver` and `ThreadedLoader` will automatically shrink to processed resources amount and won't change till reaches idle state. It never automatically grows.
+3. The `threadsAmount` param for `start` method in both `ThreadedSaver` and `ThreadedLoader` will automatically shrink to processed resources amount and won't change till reaches idle state. It never automatically grows.
 
 ```gdscript
 ThreadedLoader.add([
@@ -298,13 +298,9 @@ ThreadedLoader.add([["shuriken", "res://shuriken.jpg"]])
 ThreadedLoader.add([["board", "res://board.jpg"]])
  
 ThreadedLoader.start()
-...
-
 ```
 
-2. Prefer explicit signal connections instead of `await` to avoid possible issues with godot (more info in #4)
- 
-3. If you will use ThreadedLoader with `await` to load file that makes the same inside - the inner `await` will never resolve:
+2. Prefer explicit signal connections instead of `await` to avoid possible issues with godot. If you will use ThreadedLoader with `await` to load file that makes the same inside - the inner `await` will never resolve:
 
 ```gdscript
 # ---- file: main.gd
@@ -328,16 +324,16 @@ var cll: Array[Resource] = [
 
 All you need to do in this case - use for either outer or inner loaders (or both) explicit connection to the signal instead of `await`.
 
-5. By default both `ThreadedLoader` and `ThreadedSaver` uses `OS.get_processor_count() - 1` amount of threads if you don't pass `threadsAmount` param, leaving 1 thread free. This is done on purpose to protect your main thread from freezes, but if your project won't do any hard work while you process resource save / load (like just showing the loading screen) - you may use all the threads and make this operations a bit faster, like in code example below. But it's not recommended as default behavior and better do some tests to confirm it behave as needed.
+3. By default both `ThreadedLoader` and `ThreadedSaver` uses `OS.get_processor_count() - 1` amount of threads if you don't pass `threadsAmount` param, leaving 1 thread free. This is done on purpose to protect your main thread from freezes, but if your project won't do any hard work while you process resource save / load (like just showing the loading screen) - you may use all the threads and make this operations a bit faster, like in code example below. But it's not recommended as default behavior and better do some tests to confirm it behave as needed.
 
 ```gdscript
 # using all the threads amount for resource load
 ThreadedLoader.start(OS.get_processor_count())
 ```
 
-6. Don't use "small deploy with network file system" for remote deploy, it will randomly cause resource loading errs. If you willing so or have to use it - to avoid the errs you will need to re-launch the project (maybe few time in a row).
+4. Don't use "small deploy with network file system" for remote deploy, it will randomly cause resource loading errs. If you willing so or have to use it - to avoid the errs you will need to re-launch the project (maybe few time in a row).
   
-7. The `start` params are ignored if been called when save / load was already in progress and the initial params will be used:
+5. The `start` params are ignored if been called when save / load was already in progress and the initial params will be used:
 
 ```gdscript
 # start saving without `verifyFilesAccess`
