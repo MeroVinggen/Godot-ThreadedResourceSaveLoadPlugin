@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./icon.png" height="150" alt="Godot-ProjectileOnCurve2DPlugin Icon"/>
+  <img src="./icon.png" height="150" alt="Godot-ThreadedResourceSaveLoadPlugin Icon"/>
 </p>
 
 <h1 align="center">
@@ -25,10 +25,10 @@
 
 ## See my other plugins
 
+- [Projectile on curve 2D](https://github.com/MeroVinggen/Godot-ProjectileOnCurve2DPlugin)
 - [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)
 - [
 Vector2 editor](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
-- [Threaded Resource Save-Load](https://github.com/MeroVinggen/Godot-ThreadedResourceSaveLoadPlugin)
 
 
 ## About
