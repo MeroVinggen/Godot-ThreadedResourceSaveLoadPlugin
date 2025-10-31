@@ -85,7 +85,7 @@ ThreadedSaver.add([
 
 ### Methods
 
-`add` - adding items to save queue. The params per file are same as for godot's `ResourceSaver`:
+**`add`** - adding items to save queue. The params per file are same as for godot's `ResourceSaver`:
 
 ```gdscript
 ThreadedSaver.add([
@@ -97,7 +97,7 @@ ThreadedSaver.add([
 ])
 ```
 
-*`start` - launch saving sequence for added items via `add` method
+**`start`** - launch saving sequence for added items via `add` method
 
 ```gdscript
 ThreadedSaver.start(
@@ -106,11 +106,11 @@ ThreadedSaver.start(
 )
 ```
 
-`verifyFilesAccess` - ensures to emit `saveFinished` signal after saved files become accessible, useful when you need to change them right after saving but takes more time to process (depending on users system).
+*`verifyFilesAccess`* - ensures to emit `saveFinished` signal after saved files become accessible, useful when you need to change them right after saving but takes more time to process (depending on users system).
 
-`threadsAmount` - how many threads will be used to process saving. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
+*`threadsAmount`* - how many threads will be used to process saving. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
-`get_current_threads_amount` - returns currently used threads amount
+**`get_current_threads_amount`** - returns currently used threads amount
 
 
 ### Signals
@@ -228,7 +228,7 @@ ThreadedLoader.start(
 
 *`threadsAmount`* - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
-*`get_current_threads_amount`* - returns currently used threads amount
+**`get_current_threads_amount`** - returns currently used threads amount
 
 
 ### Signals <a id="loader-signals"></a>
