@@ -25,10 +25,10 @@
 
 ## See my other plugins
 
-- [ProjectileOnCurve2D ](https://github.com/MeroVinggen/Godot-ProjectileOnCurve2DPlugin)
-- [	
-Vector2 editor ](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
 - [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)
+- [
+Vector2 editor](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
+- [Threaded Resource Save-Load](https://github.com/MeroVinggen/Godot-ThreadedResourceSaveLoadPlugin)
 
 
 ## About
