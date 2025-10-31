@@ -190,7 +190,7 @@ or you may iterate the `loadedFiles` dictionary in loop.
 Also you can get each loaded resource by listening the `loadProgress` signal or a certain group resources by `loadGroup` signal.
 
 > [!TIP]  
-> - see all the signals at [ThreadedLoader Signals](#loader-signalsr)
+> - see all the signals at [ThreadedLoader Signals](#loader-signals)
 
 
 ### Methods
