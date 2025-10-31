@@ -22,6 +22,7 @@
   <img src="./demo-record.gif" height="350" alt="demo record"/>
 </p>
 
+
 ## See my other plugins
 
 - [ProjectileOnCurve2D ](https://github.com/MeroVinggen/Godot-ProjectileOnCurve2DPlugin)
@@ -29,12 +30,10 @@
 Vector2 editor ](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
 - [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)
 
+
 ## About
 
 This plugin allows you to save/load resources <b>fast</b> in the background using threads, preventing the main thread freezes and handle the save/load operations using signals.
-
-> [!IMPORTANT]
-> This is not the final solution for save/load processing in your project, but a wrapper for the native ResourceSaver and ResourceLoader, allowing them to be used in parallel. You may use it directly or build your save/load managers(modules) around it to suit your needs.
 
 
 ## Features
@@ -69,91 +68,36 @@ This plugin allows you to save/load resources <b>fast</b> in the background usin
 
 ## File saving
 
-### How to use
+### Usage examples
 
-1. add data to be saved via `add` method on plugin's singleton, each file params is passing as array in format: [Resource, String]
+```gdscript
+# listen to needed signals 
+ThreadedSaver.saveFinished.connect(_on_saved)
 
-> [!TIP]
-> See full params list at [Item params](#Item-params)
+# add resources to be saved and call start
+ThreadedSaver.add([
+  [<resource1>, <save_path1>],
+  [<resource2>, <save_path2>],
+  ...
+]).start()
+```
+
+
+### Methods
+
+`add` - adding items to save queue. The params per file are same as for godot's `ResourceSaver`:
 
 ```gdscript
 ThreadedSaver.add([
-  [<your resource>, <your path to save>],
-  [<your resource>, <your path to save>],
-  ...
+  [
+    resource: Resource, 
+    path: String | StringName = resource.resource_path,
+    flags: BitField[SaverFlags] = 0
+  ]
 ])
 ```
 
-2. listen to needed signals
-
-```gdscript
-ThreadedSaver.saveFinished.connect(_on_save_completed, CONNECT_ONE_SHOT)
-```
-
-3. start saving by calling `start` method
-		
-```gdscript
-ThreadedSaver.start()
-```
-
-Also you may use inline saving and chain methods call:
-
-> [!WARNING]
-> Usage with `await` is undesirable, see [Caution](#Caution) section
-
-```gdscript
-await ThreadedSaver.add([
-  [<your resource>, <your path to save>],
-  [<your resource>, <your path to save>],
-  ...
-]).start().saveFinished
-
-# or
-
-ThreadedSaver.add([
-  [<your resource>, <your path to save>],
-  [<your resource>, <your path to save>],
-  ...
-]).start().saveFinished.connect(_on_save_completed, CONNECT_ONE_SHOT)
-
-```
-
-
-### Item params
-
-The full params list per file is same as for godot's `ResourceSaver`:
-
-```gdscript
-[
-  resource: Resource, 
-  path: String | StringName = resource.resource_path,
-  flags: BitField[SaverFlags] = 0
-]
-```
-
-
-### Signals
-
-```gdscript
-# is emitted after method `start` been called
-signal saveStarted(totalResources: int)
-
-# is emitted per saved file (doesn't include access verification! see "Constructor params" section)
-signal saveProgress(completedCount: int, totalResources: int, savedPath: String)
-
-# is emitted when all files been saved (including access verification)
-signal saveFinished(savedPaths: Array[String])
-
-# is emitted per saving err
-signal saveError(path: String, errorCode: Error)
-
-# is emitted when all the job is finished and prev threads and data are cleared (see `General` section for more details)
-signal becameIdle()
-```
-
-
-### `start` method params
-
+`start` - launch saving sequence for added items via `add` method
 
 ```gdscript
 ThreadedSaver.start(
@@ -166,12 +110,27 @@ ThreadedSaver.start(
 
 `threadsAmount` - how many threads will be used to process saving. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
+`get_current_threads_amount` - returns currently used threads amount
+
+
+### Signals
+
+`saveStarted(totalResources: int)` - is emitted after method `start` been called
+
+`saveProgress(completedCount: int, totalResources: int, savedPath: String)` - is emitted per saved file (doesn't include access verification! see "Constructor params" section)
+
+`saveFinished(savedPaths: Array[String])` - is emitted when all files been saved (including access verification)
+
+`saveError(path: String, errorCode: Error)` - is emitted per saving err
+
+`becameIdle()` - is emitted when all the jobs are finished and prev threads and data are cleared (see [General](#General) section for more details)
+
 
 ## File loading
 
-### How to use`
+### Usage example
 
-1. add paths to be loaded and keys for them via `add` method on plugin's singleton, each file params is passing as array in format: Array[String, String]
+#### Base loading
    
 > [!TIP]  
 > - `STRING_NAME` type is also supported
@@ -179,98 +138,39 @@ ThreadedSaver.start(
 > - see full params list at [Item params](#Item-params-1)
 
 ```gdscript
+# listen to needed signals 
+ThreadedLoader.loadFinished.connect(_on_loaded)
+
+# add resources to be loaded and call start
 ThreadedLoader.add([
-  [<your resource key>, <your load path>],
-  [<your resource key>, <your load path>],
+  [<resource_key1>, <load_path>],
+  [<resource_key2>, <load_path>],
   ...
-])
+]).start()
 ```
 
-1. listen to needed signals
-   
-```gdscript
-ThreadedLoader.loadFinished.connect(_on_load_completed, CONNECT_ONE_SHOT)
-```
 
-3. start loading by calling `start` method 	
-   
-```gdscript
-ThreadedLoader.start()
-```
+#### Group loading
 
-Also you may use inline loading and chain methods call:
-
-> [!WARNING]
-> Usage with `await` is undesirable, see [Caution](#Caution) section
+> [!TIP]  
+> - you can add more resources to the group at runtime by calling `add_group`
+> - you can have unlimited amount of groups at the same time
 
 ```gdscript
-await ThreadedLoader.add([
-  [<your resource key>, <your load path>],
-  [<your resource key>, <your load path>],
-  ...
-]).start().loadFinished
+# listen to needed signals 
+ThreadedLoader.loadGroup.connect(_on_loaded)
 
-# or
-
-ThreadedLoader.add([
-  [<your resource key>, <your load path>],
-  [<your resource key>, <your load path>],
-  ...
-]).start().loadFinished.connect(_on_load_completed, CONNECT_ONE_SHOT)
-
+# add resources to be loaded in group and call start
+ThreadedLoader.add_group("group1", [
+  [<resource_key1>, <load_path>],
+  [<resource_key2>, <load_path>],
+], true).start()
 ```
 
 
-### Item params
+#### Accessing loaded resources
 
-The full params list per file is same as for godot's `ResourceLoader`:
-
-```gdscript
-[
-  key: String | StringName,
-  path: String | StringName, 
-  type_hint: String = "", 
-  cache_mode: CacheMode = 1
-]
-```
-
-
-### Signals
-
-```gdscript
-# is emitted after method `start` been called
-signal loadStarted(totalResources: int)
-
-# is emitted per loaded file
-signal loadProgress(completedCount: int, totalResources: int, resource: Resource, resource_key: String)
-
-# is emitted when all files been loaded
-signal loadFinished(loadedFiles: Dictionary)
-
-# is emitted when all resources in a group been loaded
-signal loadGroup(groupName: String, loaded: Dictionary, failed: Dictionary)
-
-# is emitted per loading err
-signal loadError(path: String)
-
-# is emitted when all the job is finished and prev threads and data are cleared (see `General` section for more details)
-signal becameIdle()
-```
-
-
-### `start` method params
-
-```gdscript
-ThreadedLoader.start(
-  threadsAmount: int = OS.get_processor_count() - 1
-)
-```
-`threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
-
-
-### Accessing loaded resources
-
-`ThreadedLoader` provides you with `resource` itself and its `key` and `Dictionary[key: resource]` in `loadFinished`
+`ThreadedLoader` provides you with all the loaded resources cll as `Dictionary[key: resource]` in `loadFinished` signal
 
 ```gdscript
 func start_load() -> void:
@@ -287,70 +187,68 @@ func _on_load_completed(loadedFiles: Dictionary) -> void:
 
 or you may iterate the `loadedFiles` dictionary in loop. 
 
+Also you can get each loaded resource by listening the `loadProgress` signal or a certain group resources by `loadGroup` signal.
 
-### Loading by groups
+> [!TIP]  
+> - see all the signals at [ThreadedLoader Signals](#signals-player)
 
 
-#### Params
+### Methods
+
+`add` - adding items to load queue. The params per file are same as for godot's `ResourceLoader`:
+
+```gdscript
+ThreadedSaver.add([
+  [
+    key: String | StringName,
+    path: String | StringName, 
+    type_hint: String = "", 
+    cache_mode: CacheMode = 1
+  ]
+])
+```
+
+`add_group` - adding items to load queue under a group key. The params for resources are same as in `add` method
 
 ```gdscript
 ThreadedLoader.add_group(
-  group_name: String,
-  resources: Array[Array],
-  ignore_in_finished: bool = false
+  group_name: String, 
+  resources: Array[Array], 
+  ignore_in_finished: bool = false # if true - resources from this group will not be added to loaded resources for `loadFinished` signal
 )
 ```
 
-`group_name` - will be passed to `loadGroup` signal when group will be loaded
-
-`resources` - array of resources to load (same as for `add` method)
-
-`ignore_in_finished` - flag to not include all the resource from this group in `loadFinished` signal
-
-
-#### Usage
-
-You can load resources as groups:
+`start` - launch loading sequence for added items  via `add` and `add_group` methods
 
 ```gdscript
-ThreadedLoader.loadGroup.connect(_on_group_loaded)
-
-ThreadedLoader.add_group("group1", [
-  [<your resource key>, <your load path>],
-  [<your resource key>, <your load path>],
-])
-
-ThreadedLoader.add_group("group2", [
-  [<your resource key>, <your load path>],
-  [<your resource key>, <your load path>],
-])
-
-ThreadedLoader.start()
-
-func _on_group_loaded(group_name, loaded, failed) -> void:
-  #handle loaded group
-
+ThreadedLoader.start(
+  threadsAmount: int = OS.get_processor_count() - 1
+)
 ```
 
-You can you use it alongside single resources:
+`threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
-```gdscript
-ThreadedLoader.add_group("group1", [
-  [<your resource key>, <your load path>],
-  [<your resource key>, <your load path>],
-])
+`get_current_threads_amount` - returns currently used threads amount
 
-ThreadedLoader.add([
-  [<your resource key>, <your load path>],
-  [<your resource key>, <your load path>],
-])
 
-```
+### Signals <a id="loader-signals"></a>
+
+`loadStarted(totalResources: int)` - is emitted after method `start` been called
+
+`loadProgress(completedCount: int, totalResources: int, resource: Resource, resource_key: String)` - is emitted per loaded file
+
+`loadFinished(loadedFiles: Dictionary)` - is emitted when all files been loaded
+
+`loadGroup(groupName: String, loaded: Dictionary, failed: Dictionary)` - is emitted when all resources in a group been loaded
+
+`loadError(path: String)` - is emitted per loading err
+
+`becameIdle()` - is emitted when all the job is finished and prev threads and data are cleared (see [General](#General) section for more details)
 
 
 ## General
 
-1. You can globally silence all warnings as shown below:
+1. You can globally silence all the warnings as shown below:
 
 ```gdscript
 ThreadedSaver.ignoreWarnings = true
@@ -382,23 +280,24 @@ ThreadedLoader.add([
 
 ### Caution
 
-1. Batch `start` calls for save / load operations with `add` method instead of saving / loading each file separately (less `start` calls < performance)
+1. Batch `start` calls for save / load operations with `add` method instead of saving / loading each file separately (less `start` calls = performance)
 
 ```gdscript
 # ---- bad
 
 ThreadedLoader.add([["shuriken", "res://shuriken.jpg"]]).start()
 ...
-await ThreadedLoader.becameIdle
+await ThreadedLoader.loadFinished
 ThreadedLoader.add([["board", "res://board.jpg"]]).start()
 ...
 
 # ---- good
 
-ThreadedLoader.add([
-  ["shuriken", "res://shuriken.jpg"],
-  ["board", "res://board.jpg"],
-]).start()
+ThreadedLoader.add([["shuriken", "res://shuriken.jpg"]])
+...
+ThreadedLoader.add([["board", "res://board.jpg"]])
+ 
+ThreadedLoader.start()
 ...
 
 ```
