@@ -97,7 +97,7 @@ ThreadedSaver.add([
 ])
 ```
 
-`start` - launch saving sequence for added items via `add` method
+*`start` - launch saving sequence for added items via `add` method
 
 ```gdscript
 ThreadedSaver.start(
@@ -190,12 +190,12 @@ or you may iterate the `loadedFiles` dictionary in loop.
 Also you can get each loaded resource by listening the `loadProgress` signal or a certain group resources by `loadGroup` signal.
 
 > [!TIP]  
-> - see all the signals at [ThreadedLoader Signals](#signals-player)
+> - see all the signals at [ThreadedLoader Signals](#loader-signalsr)
 
 
 ### Methods
 
-`add` - adding items to load queue. The params per file are same as for godot's `ResourceLoader`:
+**`add`** - adding items to load queue. The params per file are same as for godot's `ResourceLoader`:
 
 ```gdscript
 ThreadedSaver.add([
@@ -208,7 +208,7 @@ ThreadedSaver.add([
 ])
 ```
 
-`add_group` - adding items to load queue under a group key. The params for resources are same as in `add` method
+**`add_group`** - adding items to load queue under a group key. The params for resources are same as in `add` method
 
 ```gdscript
 ThreadedLoader.add_group(
@@ -218,7 +218,7 @@ ThreadedLoader.add_group(
 )
 ```
 
-`start` - launch loading sequence for added items  via `add` and `add_group` methods
+**`start`** - launch loading sequence for added items  via `add` and `add_group` methods
 
 ```gdscript
 ThreadedLoader.start(
@@ -226,9 +226,9 @@ ThreadedLoader.start(
 )
 ```
 
-`threadsAmount` - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
+*`threadsAmount`* - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
 
-`get_current_threads_amount` - returns currently used threads amount
+*`get_current_threads_amount`* - returns currently used threads amount
 
 
 ### Signals <a id="loader-signals"></a>
