@@ -12,6 +12,7 @@ config_version=5
 
 config/name="Threaded resource save-load plugin"
 config/tags=PackedStringArray("my_plugin")
+run/main_scene="uid://btj50xwtv5m2n"
 config/features=PackedStringArray("4.5", "Mobile")
 config/icon="uid://ca5qo44l4vy2k"
 

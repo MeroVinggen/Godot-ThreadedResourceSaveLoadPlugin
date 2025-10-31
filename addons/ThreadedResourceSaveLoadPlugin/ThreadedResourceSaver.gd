@@ -13,7 +13,9 @@ var _semaphore: Semaphore
 var _mutex: Mutex
 var _threads: Array[Thread] = []
 # curently processing queue
-var _activeQueue: Array[Array] = []
+var _activeQueue: Dictionary = {}
+# type : Array[String]
+var _activeQueueKeys: Array
 # queue awaiting for `start` call
 # typing: Dictionary[save_path: String, save_params: Array]
 #	any params with same save path will just override existed
@@ -117,8 +119,9 @@ func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processo
 	if _awaiting_for_cleaning:
 		_awaiting_for_cleaning = false
 	
-	_activeQueue.append_array(_idleQueue.values())
-	_totalResourcesAmount += _idleQueue.size()
+	_activeQueue.merge(_idleQueue, true)
+	_totalResourcesAmount = _activeQueue.size()
+	_activeQueueKeys = _activeQueue.keys()
 	
 	if _totalResourcesAmount == 0:
 		if not ThreadedResourceSaver.ignoreWarnings:
@@ -172,19 +175,20 @@ func _saveThreadWorker() -> void:
 			_mutex.unlock()
 			break
 		
-		if _activeQueue.is_empty():
+		if _activeQueueKeys.is_empty():
 			_mutex.unlock()
 			continue
 		
-		var saveParams: Array = _activeQueue.pop_back()
+		var resource_path: String = _activeQueueKeys.pop_back()
+		var saveParams: Array = _activeQueue[resource_path]
+		_activeQueue.erase(resource_path)
 		
+		print("saveParams: ", saveParams)
 		_mutex.unlock()
 		
 		var error: Error = ResourceSaver.save.callv(saveParams)
 		
 		_mutex.lock()
-		
-		var resource_path: String = saveParams[0]
 		
 		if error == OK:
 			_completedResourcesAmount += 1
@@ -210,7 +214,7 @@ func _saveThreadWorker() -> void:
 				_awaiting_for_cleaning = true
 				_on_save_finished.call_deferred()
 		else:
-			if not _activeQueue.is_empty():
+			if not _activeQueueKeys.is_empty():
 				_semaphore.post()
 				
 		_mutex.unlock()
@@ -273,6 +277,7 @@ func _clearDataAfterSave() -> void:
 	
 	# Clear all data for next use
 	_activeQueue.clear()
+	_activeQueueKeys.clear()
 	_threads.clear()
 	_savedPaths = []
 	_totalResourcesAmount = 0

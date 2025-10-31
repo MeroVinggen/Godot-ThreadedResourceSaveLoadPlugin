@@ -69,7 +69,7 @@ func get_current_threads_amount() -> int:
 	return result
 
 
-func add_group(group_name: String, resources: Array[Array], ignore_in_finished: bool = false):
+func add_group(group_name: String, resources: Array[Array], ignore_in_finished: bool = false) -> ThreadedResourceLoader:
 	_mutex.lock()
 	
 	for params in resources:
