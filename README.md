@@ -29,6 +29,7 @@
 - [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)
 - [
 Vector2 editor](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
+- [Awaiter](https://github.com/MeroVinggen/Godot-AwaiterPlugin)
 
 
 ## About
