@@ -95,7 +95,7 @@ ThreadedSaver.add([
     path: String | StringName = resource.resource_path,
     flags: BitField[SaverFlags] = 0
   ]
-])
+]) -> ThreadedResourceSaver
 ```
 
 **`start`** - launch saving sequence for added items via `add` method
@@ -104,7 +104,7 @@ ThreadedSaver.add([
 ThreadedSaver.start(
   verifyFilesAccess: bool = false, 
   threadsAmount: int = OS.get_processor_count() - 1
-)
+) -> ThreadedResourceSaver
 ```
 
 *`verifyFilesAccess`* - ensures to emit `saveFinished` signal after saved files become accessible, useful when you need to change them right after saving but takes more time to process (depending on users system).
@@ -201,14 +201,14 @@ Also you can get each loaded resource by listening the `loadProgress` signal or 
 **`add`** - adding items to load queue. The params per file are same as for godot's `ResourceLoader`:
 
 ```gdscript
-ThreadedSaver.add([
+ThreadedLoader.add([
   [
     key: String | StringName,
     path: String | StringName, 
     type_hint: String = "", 
     cache_mode: CacheMode = 1
   ]
-])
+]) -> ThreadedResourceLoader
 ```
 
 **`add_group`** - adding items to load queue under a group key. The params for resources are same as in `add` method
@@ -218,7 +218,7 @@ ThreadedLoader.add_group(
   group_name: String, 
   resources: Array[Array], 
   ignore_in_finished: bool = false # if true - resources from this group will not be added to loaded resources for `loadFinished` signal
-)
+) -> ThreadedResourceLoader
 ```
 
 **`start`** - launch loading sequence for added items  via `add` and `add_group` methods
@@ -226,7 +226,7 @@ ThreadedLoader.add_group(
 ```gdscript
 ThreadedLoader.start(
   threadsAmount: int = OS.get_processor_count() - 1
-)
+) -> ThreadedResourceLoader
 ```
 
 *`threadsAmount`* - how many threads will be used to process loading. You may pass your amount to save resources for additional parallel tasks (the amount will be cut to resources amount).
