@@ -230,11 +230,6 @@ func _verifyFileReadinessAccess() -> void:
 	var savedPathsCopy: Array[String] = _savedPaths.duplicate()
 	_mutex.unlock()
 	
-	if not _verifyFilesAccess:
-		call_deferred("emit_signal", "saveFinished", savedPathsCopy)
-		_stopSaveThreads.call_deferred()
-		return
-	
 	var file: FileAccess
 	for path in savedPathsCopy:
 		file = FileAccess.open(path, FileAccess.READ)
