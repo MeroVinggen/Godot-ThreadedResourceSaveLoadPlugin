@@ -8,18 +8,22 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="Threaded resource save-load plugin"
 config/tags=PackedStringArray("my_plugin")
 run/main_scene="uid://btj50xwtv5m2n"
-config/features=PackedStringArray("4.5", "Mobile")
+config/features=PackedStringArray("4.6", "Mobile")
 config/icon="uid://ca5qo44l4vy2k"
 
 [autoload]
 
-ThreadedLoader="*res://addons/ThreadedResourceSaveLoadPlugin/ThreadedResourceLoader.gd"
-ThreadedSaver="*res://addons/ThreadedResourceSaveLoadPlugin/ThreadedResourceSaver.gd"
+ThreadedLoader="*uid://c44re5ou28ihg"
+ThreadedSaver="*uid://bvevwkefulqwv"
 
 [editor_plugins]
 

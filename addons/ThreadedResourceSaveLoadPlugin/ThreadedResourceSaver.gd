@@ -183,7 +183,6 @@ func _saveThreadWorker() -> void:
 		var saveParams: Array = _activeQueue[resource_path]
 		_activeQueue.erase(resource_path)
 		
-		print("saveParams: ", saveParams)
 		_mutex.unlock()
 		
 		var error: Error = ResourceSaver.save.callv(saveParams)
