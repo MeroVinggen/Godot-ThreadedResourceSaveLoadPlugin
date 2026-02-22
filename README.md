@@ -25,10 +25,10 @@
 
 ## See my other plugins
 
+- [MeshPath3D](https://github.com/MeroVinggen/Godot-MeshPath3D-Plugin)
 - [Projectile on curve 2D](https://github.com/MeroVinggen/Godot-ProjectileOnCurve2DPlugin)
 - [Android Internet Connection State](https://github.com/MeroVinggen/Godot-AndroidInternetConnectionStatePlugin)
-- [
-Vector2 editor](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
+- [Vector2 editor](https://github.com/MeroVinggen/Godot-Vector2ArrayEditorPlugin)
 - [Awaiter](https://github.com/MeroVinggen/Godot-AwaiterPlugin)
 
 
@@ -179,8 +179,8 @@ ThreadedLoader.add_group("group1", [
 func start_load() -> void:
   ThreadedLoader.loadFinished.connect(_on_load_completed, CONNECT_ONE_SHOT)
   ThreadedLoader.add([
-    ["img", [res://1.jpg],
-    ["scene", [res://2.tscn],
+    ["img", ["res://1.jpg"],
+    ["scene", ["res://2.tscn"],
   ])
 
 func _on_load_completed(loadedFiles: Dictionary) -> void:
