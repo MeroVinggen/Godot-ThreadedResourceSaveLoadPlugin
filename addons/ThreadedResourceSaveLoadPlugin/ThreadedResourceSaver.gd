@@ -62,12 +62,12 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 	_mutex.lock()
 	
 	for params in resources:
-		if not (params[0] is Resource):
-			push_error("invalid param value: \"{0}\", it should be a Resource, will be ignored".format([params[0]]))
-			continue
-			
 		if params.size() == 0: 
 			push_error("empty params array will be ignored")
+			continue
+		
+		if not (params[0] is Resource):
+			push_error("invalid param value: \"{0}\", it should be a Resource, will be ignored".format([params[0]]))
 			continue
 		else:
 			var resourcePathIsEmpty: bool = params[0].resource_path.strip_edges() == ""

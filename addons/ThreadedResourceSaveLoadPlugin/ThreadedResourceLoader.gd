@@ -111,7 +111,7 @@ func add(resources: Array[Array]) -> ThreadedResourceLoader:
 
 func _getResourceKey(params: Array) -> String:
 	var resource_key = params.pop_front()
-	# if pased name is empty - use resource path
+	# if passed name is empty - use resource path
 	if resource_key.is_empty():
 		resource_key = params[0]
 	
