@@ -7,12 +7,12 @@ signal saveFinished(savedPaths: Array[String])
 signal saveError(path: String, errorCode: Error)
 signal becameIdle()
 
-static var ignoreWarnings: bool = false
+static var ignore_warnings: bool = false
 
 var _semaphore: Semaphore
 var _mutex: Mutex
 var _threads: Array[Thread] = []
-# curently processing queue
+# currently processing queue
 var _activeQueue: Dictionary = {}
 # type : Array[String]
 var _activeQueueKeys: Array
@@ -77,7 +77,7 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 					push_error("resource_path is empty and no save path param been provided, resource will be ignored")
 					continue
 				else:
-					if not ThreadedResourceSaver.ignoreWarnings:
+					if not ThreadedResourceSaver.ignore_warnings:
 						push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
 					params.append(params[0].resource_path)
 			# params amount > 1
@@ -93,7 +93,7 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 						push_error("resource_path and save path param are both empty, resource will be ignored")
 						continue
 					else:
-						if not ThreadedResourceSaver.ignoreWarnings:
+						if not ThreadedResourceSaver.ignore_warnings:
 							push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
 						params[1] = params[0].resource_path
 
@@ -124,7 +124,7 @@ func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processo
 	_activeQueueKeys = _activeQueue.keys()
 	
 	if _totalResourcesAmount == 0:
-		if not ThreadedResourceSaver.ignoreWarnings:
+		if not ThreadedResourceSaver.ignore_warnings:
 			push_warning("save queue is empty, immediate finish saving signal emission")
 		
 		if _savingHasStarted:

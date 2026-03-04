@@ -15,7 +15,7 @@ signal loadFinished(loadedFiles: Dictionary)
 signal loadError(path: String)
 signal becameIdle()
 
-static var ignoreWarnings: bool = false
+static var ignore_warnings: bool = false
 
 var _semaphore: Semaphore
 var _mutex: Mutex
@@ -133,7 +133,7 @@ func _areParamsValid(params: Array) -> bool:
 		return false
 	# skip if key already exists
 	elif params[0].strip_edges() != "" and _keyExist(params[0]):
-		if not ThreadedResourceLoader.ignoreWarnings:
+		if not ThreadedResourceLoader.ignore_warnings:
 			push_warning("key \"{0}\" already exists, resource will be ignored".format(params[0]))
 		return false
 	
@@ -163,7 +163,7 @@ func start(threadsAmount: int = OS.get_processor_count() - 1) -> ThreadedResourc
 	_totalResourcesAmount += _idleQueue.size()
 	
 	if _totalResourcesAmount == 0:
-		if not ThreadedResourceLoader.ignoreWarnings:
+		if not ThreadedResourceLoader.ignore_warnings:
 			push_warning("load queue is empty, immediate finish loading signal emission")
 		
 		if _loadingHasStarted:
@@ -300,7 +300,7 @@ func _stopLoadThreads() -> void:
 		_semaphore.post()
 	
 	for thread in _threads:
-		# not checking for alive coz thread coud exit naturaly on finished the work
+		# not checking for alive coz thread could exit naturally on finished the work
 		# so closing all the threads been opened anyway
 		if thread.is_started():
 			thread.wait_to_finish()

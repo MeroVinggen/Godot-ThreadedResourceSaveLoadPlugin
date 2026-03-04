@@ -256,8 +256,8 @@ ThreadedLoader.start(
 1. You can globally silence all the warnings as shown below:
 
 ```gdscript
-ThreadedSaver.ignoreWarnings = true
-ThreadedLoader.ignoreWarnings = true
+ThreadedSaver.ignore_warnings = true
+ThreadedLoader.ignore_warnings = true
 ```
 
 2. `ThreadedSaver` batches the passed resources to save, so if you simultaneously call saving for the same path - only the last one (newest) will be processed. This will gain you a bit of performance, depending on saving frequency and file sizes by cutting the redundant work.
