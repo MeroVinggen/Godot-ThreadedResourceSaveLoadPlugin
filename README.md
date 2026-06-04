@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./icon.png" height="150" alt="Godot-ThreadedResourceSaveLoadPlugin Icon"/>
+  <img src="./icon.webp" height="150" alt="Godot-ThreadedResourceSaveLoadPlugin Icon"/>
 </p>
 
 <h1 align="center">
