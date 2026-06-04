@@ -13,26 +13,26 @@ var _semaphore: Semaphore
 var _mutex: Mutex
 var _threads: Array[Thread] = []
 # currently processing queue
-var _activeQueue: Dictionary = {}
+var _active_queue: Dictionary = {}
 # type : Array[String]
-var _activeQueueKeys: Array
+var _active_queue_keys: Array
 # queue awaiting for `start` call
 # typing: Dictionary[save_path: String, save_params: Array]
 #	any params with same save path will just override existed
 #	so only the most recent remains to process
-var _idleQueue: Dictionary = {}
+var _idle_queue: Dictionary = {}
 # used to check for duplicates
-var _totalResourcesAmount: int = 0
-var _completedResourcesAmount: int = 0
-var _failedResourcesAmount: int = 0
-var _savedPaths: Array[String] = []
-var _verifyFilesAccess: bool = true
+var _total_resources_amount: int = 0
+var _completed_resources_amount: int = 0
+var _failed_resources_amount: int = 0
+var _saved_paths: Array[String] = []
+var _verify_files_access: bool = true
 # is in cleaning stage
-var _isStopping: bool = false
+var _is_stopping: bool = false
 # on saving finished - schedule stopping (cleaning)
 var _awaiting_for_cleaning: bool = false
-var _savingHasStarted: bool = false
-var _currentThreadsAmount: int = 0
+var _saving_has_started: bool = false
+var _current_threads_amount: int = 0
 # flag for `start` calls during stopping (cleaning) stage to auto process them when become idle
 var _auto_start_on_ready: bool = false
 var _auto_start_on_ready_thread_amount: int = 0
@@ -45,14 +45,14 @@ func _init() -> void:
 
 func is_idle() -> bool:
 	_mutex.lock()
-	var result = not _savingHasStarted
+	var result = not _saving_has_started
 	_mutex.unlock()
 	return result
 
 
 func get_current_threads_amount() -> int:
 	_mutex.lock()
-	var result = _currentThreadsAmount
+	var result = _current_threads_amount
 	_mutex.unlock()
 	return result
 
@@ -97,7 +97,7 @@ func add(resources: Array[Array]) -> ThreadedResourceSaver:
 							push_warning("save path param is empty, resource_path will be used instead: \"{0}\"".format([params[0].resource_path]))
 						params[1] = params[0].resource_path
 
-		_idleQueue[params[1]] = params
+		_idle_queue[params[1]] = params
 	
 	_mutex.unlock()
 	
@@ -108,7 +108,7 @@ func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processo
 	_mutex.lock()
 	
 	# if already in stop stage
-	if _isStopping:
+	if _is_stopping:
 		push_warning("currently in the cleaning stage, the start will be delayed")
 		_auto_start_on_ready = true
 		_auto_start_on_ready_thread_amount = threadsAmount
@@ -119,69 +119,69 @@ func start(verifyFilesAccess: bool = false, threadsAmount: int = OS.get_processo
 	if _awaiting_for_cleaning:
 		_awaiting_for_cleaning = false
 	
-	_activeQueue.merge(_idleQueue, true)
-	_totalResourcesAmount = _activeQueue.size()
-	_activeQueueKeys = _activeQueue.keys()
+	_active_queue.merge(_idle_queue, true)
+	_total_resources_amount = _active_queue.size()
+	_active_queue_keys = _active_queue.keys()
 	
-	if _totalResourcesAmount == 0:
+	if _total_resources_amount == 0:
 		if not ThreadedResourceSaver.ignore_warnings:
 			push_warning("save queue is empty, immediate finish saving signal emission")
 		
-		if _savingHasStarted:
+		if _saving_has_started:
 			if not _awaiting_for_cleaning:
 				_awaiting_for_cleaning = true
 				_on_save_finished.call_deferred()
 		else:
 			_clearDataAfterSave.call_deferred()
 		
-		call_deferred("emit_signal", "saveFinished", _savedPaths)
+		call_deferred("emit_signal", "saveFinished", _saved_paths)
 		_mutex.unlock()
 		return self
 	
-	if not _savingHasStarted:
-		_savingHasStarted = true
-		_verifyFilesAccess = verifyFilesAccess
+	if not _saving_has_started:
+		_saving_has_started = true
+		_verify_files_access = verifyFilesAccess
 		
 		# Create thread pool for this saving session
-		_initThreadPool(threadsAmount)
+		_init_thread_pool(threadsAmount)
 		
-	call_deferred("emit_signal", "saveStarted", _totalResourcesAmount)
+	call_deferred("emit_signal", "saveStarted", _total_resources_amount)
 	
-	for _i in range(_currentThreadsAmount):
+	for _i in range(_current_threads_amount):
 		_semaphore.post.call_deferred()
 	
-	_idleQueue.clear()
+	_idle_queue.clear()
 	_mutex.unlock()
 	
 	return self
 
 
-func _initThreadPool(threadsAmount: int) -> void:
-	var actualThreadsNeeded = min(threadsAmount, _totalResourcesAmount)
+func _init_thread_pool(threadsAmount: int) -> void:
+	var actualThreadsNeeded = min(threadsAmount, _total_resources_amount)
 	var thread: Thread
 	for i in range(actualThreadsNeeded):
 		thread = Thread.new()
 		_threads.append(thread)
-		thread.start(_saveThreadWorker)
-	_currentThreadsAmount = actualThreadsNeeded
+		thread.start(_save_thread_worker)
+	_current_threads_amount = actualThreadsNeeded
 
 
-func _saveThreadWorker() -> void:
+func _save_thread_worker() -> void:
 	while true:
 		_semaphore.wait()
 		_mutex.lock()
 		
-		if _isStopping:
+		if _is_stopping:
 			_mutex.unlock()
 			break
 		
-		if _activeQueueKeys.is_empty():
+		if _active_queue_keys.is_empty():
 			_mutex.unlock()
 			continue
 		
-		var resource_path: String = _activeQueueKeys.pop_back()
-		var saveParams: Array = _activeQueue[resource_path]
-		_activeQueue.erase(resource_path)
+		var resource_path: String = _active_queue_keys.pop_back()
+		var saveParams: Array = _active_queue[resource_path]
+		_active_queue.erase(resource_path)
 		
 		_mutex.unlock()
 		
@@ -190,30 +190,30 @@ func _saveThreadWorker() -> void:
 		_mutex.lock()
 		
 		if error == OK:
-			_completedResourcesAmount += 1
-			_savedPaths.append(resource_path)
+			_completed_resources_amount += 1
+			_saved_paths.append(resource_path)
 			call_deferred(
 				"emit_signal", 
 				"saveProgress", 
-				_completedResourcesAmount, 
-				_totalResourcesAmount,
+				_completed_resources_amount, 
+				_total_resources_amount,
 				resource_path
 			)
 		else:
-			_failedResourcesAmount += 1
+			_failed_resources_amount += 1
 			call_deferred("emit_signal", "saveError", resource_path, error)
 		
-		var isSaveComplete: bool = _completedResourcesAmount + _failedResourcesAmount >= _totalResourcesAmount
+		var isSaveComplete: bool = _completed_resources_amount + _failed_resources_amount >= _total_resources_amount
 		
 		if isSaveComplete:
-			if _verifyFilesAccess:
+			if _verify_files_access:
 				_verifyFileReadinessAccess.call_deferred()
 			else:
-				call_deferred("emit_signal", "saveFinished", _savedPaths)
+				call_deferred("emit_signal", "saveFinished", _saved_paths)
 				_awaiting_for_cleaning = true
 				_on_save_finished.call_deferred()
 		else:
-			if not _activeQueueKeys.is_empty():
+			if not _active_queue_keys.is_empty():
 				_semaphore.post()
 				
 		_mutex.unlock()
@@ -227,7 +227,7 @@ func _on_save_finished() -> void:
 
 func _verifyFileReadinessAccess() -> void:
 	_mutex.lock()
-	var savedPathsCopy: Array[String] = _savedPaths.duplicate()
+	var savedPathsCopy: Array[String] = _saved_paths.duplicate()
 	_mutex.unlock()
 	
 	var file: FileAccess
@@ -247,13 +247,13 @@ func _verifyFileReadinessAccess() -> void:
 # handle also the cleanup (_clearDataAfterSave call at the end)
 func _stopSaveThreads() -> void:
 	_mutex.lock()
-	if _isStopping:
+	if _is_stopping:
 		_mutex.unlock()
 		return
-	_isStopping = true
+	_is_stopping = true
 	_mutex.unlock()
 	
-	for _i in range(_currentThreadsAmount):
+	for _i in range(_current_threads_amount):
 		_semaphore.post()
 	
 	for thread in _threads:
@@ -270,20 +270,20 @@ func _clearDataAfterSave() -> void:
 	_mutex.lock()
 	
 	# Clear all data for next use
-	_activeQueue.clear()
-	_activeQueueKeys.clear()
+	_active_queue.clear()
+	_active_queue_keys.clear()
 	_threads.clear()
-	_savedPaths = []
-	_totalResourcesAmount = 0
-	_completedResourcesAmount = 0
-	_failedResourcesAmount = 0
-	_isStopping = false
-	_savingHasStarted = false
-	_currentThreadsAmount = 0
-	_verifyFilesAccess = true
+	_saved_paths = []
+	_total_resources_amount = 0
+	_completed_resources_amount = 0
+	_failed_resources_amount = 0
+	_is_stopping = false
+	_saving_has_started = false
+	_current_threads_amount = 0
+	_verify_files_access = true
 	_awaiting_for_cleaning = false
 	
-	if _idleQueue.is_empty():
+	if _idle_queue.is_empty():
 		_auto_start_on_ready = false
 		_auto_start_on_ready_thread_amount = 0
 	elif _auto_start_on_ready:
@@ -300,10 +300,10 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		# Force immediate thread cleanup when being deleted
 		_mutex.lock()
-		_isStopping = true
+		_is_stopping = true
 		
 		# don't use separate func coz ref will be invalid
-		for _i in range(_currentThreadsAmount):
+		for _i in range(_current_threads_amount):
 			_semaphore.post()
 		
 		for thread in _threads:
@@ -315,5 +315,5 @@ func _notification(what: int) -> void:
 
 # cleanup for singleton remove / plugin disabled etc.
 func _exit_tree():
-	if _savingHasStarted:
+	if _saving_has_started:
 		_stopSaveThreads()
