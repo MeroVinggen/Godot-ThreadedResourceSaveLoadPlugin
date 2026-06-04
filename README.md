@@ -19,7 +19,7 @@
 </h2>
 
 <p align="center">
-  <img src="./demo-record-v2.gif" alt="demo record"/>
+  <img src="./demo-record-v3.gif" alt="demo record"/>
 </p>
 
 
