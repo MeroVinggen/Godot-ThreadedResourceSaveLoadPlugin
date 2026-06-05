@@ -36,7 +36,7 @@
 
 ## About
 
-This plugin allows you to save/load resources <b>fast</b> in the background using threads, preventing the main thread freezes and handle the save/load operations using signals.
+This plugin allows you to save/load resources in the background using threads, preventing main-thread freezes and handling save/load operations through signals.
 
 
 ## Features
