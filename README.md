@@ -1,6 +1,6 @@
 <p align="center">
   <img src="./icon.webp"  
-  height="200"
+  height="300"
   alt="Godot-ThreadedResourceSaveLoadPlugin Icon"/>
 </p>
 
